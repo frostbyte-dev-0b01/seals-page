@@ -2,7 +2,15 @@
   const entryScreen = document.getElementById('entry-screen');
   const startButton = document.getElementById('start-button');
 
-  const engine = new Engine();
+  const GODOT_CONFIG = {
+    canvas: canvas,
+    executable: 'three-seals',
+    mainPack: 'three-seals.pck',
+    args: [],
+    canvasResizePolicy: 2
+    };
+
+  engine = new Engine(GODOT_CONFIG);
 
   startButton.textContent = 'Start Game';
 
