@@ -4,9 +4,9 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1762474114|830274845';
+const CACHE_VERSION = '1764118333|459122629';
 /** @type {string} */
-const CACHE_PREFIX = '3 Seals-sw-cache-';
+const CACHE_PREFIX = 'three-seals-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 /** @type {string} */
 const OFFLINE_URL = 'three-seals.offline.html';
