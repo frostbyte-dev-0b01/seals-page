@@ -12,8 +12,8 @@ html, body, #canvas {
 }
 
 body {
-	color: white;
-	background-color: black;
+	color: #333;
+	background-color: white;
 	overflow: hidden;
 	touch-action: none;
 }
@@ -38,7 +38,7 @@ body {
 }
 
 #status {
-	background-color: #242424;
+	background-color: white;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -89,6 +89,32 @@ body {
 	text-align: center;
 	z-index: 1;
 }
+
+#play-button {
+	display: none;
+	position: absolute;
+	bottom: 10%;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 1rem 2rem;
+	font-size: 1.5rem;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	border-radius: 0.5rem;
+	cursor: pointer;
+	transition: background-color 0.3s;
+	z-index: 2;
+}
+
+#play-button:hover {
+	background-color: #45a049;
+}
+
+#play-button:active {
+	background-color: #3d8b40;
+}
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
@@ -108,6 +134,7 @@ body {
 			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="index.png" alt="">
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
+			<button id="play-button">Play</button>
 		</div>
 
 		<script src="index.js"></script>
@@ -120,9 +147,11 @@ const engine = new Engine(GODOT_CONFIG);
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
 	const statusNotice = document.getElementById('status-notice');
+	const playButton = document.getElementById('play-button');
 
 	let initializing = true;
 	let statusMode = '';
+	let gameReady = false;
 
 	function setStatusMode(mode) {
 		if (statusMode === mode || !initializing) {
@@ -162,6 +191,13 @@ const engine = new Engine(GODOT_CONFIG);
 		setStatusMode('notice');
 		initializing = false;
 	}
+
+	function startGame() {
+		statusOverlay.remove();
+		initializing = false;
+	}
+
+	playButton.addEventListener('click', startGame);
 
 	const missing = Engine.getMissingFeatures({
 		threads: GODOT_THREADS_ENABLED,
@@ -211,7 +247,10 @@ const engine = new Engine(GODOT_CONFIG);
 				}
 			},
 		}).then(() => {
-			setStatusMode('hidden');
+			// Show play button instead of hiding immediately
+			statusProgress.style.display = 'none';
+			playButton.style.display = 'block';
+			gameReady = true;
 		}, displayFailureNotice);
 	}
 }());
