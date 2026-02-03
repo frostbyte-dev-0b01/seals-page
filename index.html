@@ -158,6 +158,38 @@ body {
 
 		<script src="index.js"></script>
 		<script>
+// localStorage bridge for game save/load
+window.savePuzzleState = function(stateObj) {
+	try {
+		// stateObj is passed as a JS object from GDScript; stringify for storage
+		localStorage.setItem('3seals_save', JSON.stringify(stateObj));
+		return true;
+	} catch (e) {
+		console.error('Failed to save game state:', e);
+		return false;
+	}
+};
+
+window.loadPuzzleState = function() {
+	try {
+		return localStorage.getItem('3seals_save');
+	} catch (e) {
+		console.error('Failed to load game state:', e);
+		return null;
+	}
+};
+
+window.clearPuzzleState = function() {
+	try {
+		localStorage.removeItem('3seals_save');
+		return true;
+	} catch (e) {
+		console.error('Failed to clear game state:', e);
+		return false;
+	}
+};
+		</script>
+		<script>
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
