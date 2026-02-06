@@ -93,7 +93,7 @@ body {
 #play-button {
 	display: none;
 	position: absolute;
-	bottom: 15%;
+	bottom: calc(15% + 1rem);
 	left: 50%;
 	transform: translateX(-50%);
 	padding: 1rem 2rem;
@@ -156,7 +156,7 @@ body {
 			<div id="puzzle-info">[show_date]<br>No. [id]<br>Edited by [editor]<br>Email: dailyrunesgame@gmail.com</div>
 		</div>
 
-		<script src="index.js"></script>
+		<script src="index.js?v=0.0.1"></script>
 		<script>
 // localStorage bridge for game save/load
 window.savePuzzleState = function(stateObj) {
@@ -190,7 +190,7 @@ window.clearPuzzleState = function() {
 };
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js?v=0.0.1"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
