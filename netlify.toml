@@ -1,0 +1,28 @@
+# Netlify configuration for 3-Seals game deployment
+
+# Redirect root to the current versioned HTML
+[[redirects]]
+  from = "/"
+  to = "/index-0.0.11-2467d24.html"
+  status = 200
+
+[[redirects]]
+  from = "/index.html"
+  to = "/index-0.0.11-2467d24.html"
+  status = 301
+
+[[headers]]
+  # Never cache index.html - always fetch fresh
+  for = "/index-*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  # Never cache root path either
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
