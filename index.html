@@ -152,7 +152,7 @@ body {
 
 	</head>
 	<body>
-		<div id="version-number">v0.0.1</div>
+		<div id="version-number">v0.0.5</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -171,7 +171,7 @@ body {
 			</div>
 		</div>
 
-		<script src="index.js?v=0.0.1"></script>
+		<script src="index.js?v=0.0.5"></script>
 		<script>
 // localStorage bridge for game save/load
 window.savePuzzleState = function(stateObj) {
@@ -205,7 +205,7 @@ window.clearPuzzleState = function() {
 };
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js?v=0.0.1"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck?v=0.0.5":38130016,"index.wasm?v=0.0.5":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js?v=0.0.5"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -311,118 +311,61 @@ const engine = new Engine(GODOT_CONFIG);
 		return `${yyyy}-${mm}-${dd}`;
 	}
 
-	function parseCsvLine(line) {
-		// Proper CSV parsing that handles quoted fields with commas
-		const result = [];
-		let current = '';
-		let inQuotes = false;
-		
-		for (let i = 0; i < line.length; i++) {
-			const char = line[i];
-			if (char === '"') {
-				if (inQuotes && line[i + 1] === '"') {
-					// Escaped quote
-					current += '"';
-					i++; // Skip next quote
-				} else {
-					// Toggle quote state
-					inQuotes = !inQuotes;
+	// Page Visibility API: Auto-refresh when day changes while tab is hidden
+	(function setupDayChangeRefresh() {
+		const lastDateKey = '3seals_last_date';
+		let lastKnownDate = localStorage.getItem(lastDateKey) || getTodayString();
+
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) {
+				// Tab became visible again - check if day changed
+				const today = getTodayString();
+				if (lastKnownDate !== today) {
+					console.log('Day changed while tab was hidden: ' + lastKnownDate + ' -> ' + today + ', reloading...');
+					window.location.reload();
 				}
-			} else if (char === ',' && !inQuotes) {
-				// Field separator
-				result.push(current.trim());
-				current = '';
 			} else {
-				current += char;
+				// Tab hidden - record the current date
+				lastKnownDate = getTodayString();
+				localStorage.setItem(lastDateKey, lastKnownDate);
+				console.log('Tab hidden, recorded date: ' + lastKnownDate);
 			}
-		}
-		// Add last field
-		result.push(current.trim());
-		return result;
-	}
+		});
 
-	function parseCsv(text) {
-		const lines = text.trim().split(/\r?\n/);
-		if (lines.length === 0) return null;
-		
-		// Parse header
-		const headers = parseCsvLine(lines[0]);
-		const idx = {
-			show_date: headers.indexOf('show_date'),
-			id: headers.indexOf('id'),
-			editor: headers.indexOf('editor'),
-		};
-		
-		console.log('CSV headers:', headers);
-		console.log('Column indices:', idx);
-		
-		const today = getTodayString();
-		console.log('Looking for today:', today);
-		
-		for (let i = 1; i < lines.length; i++) {
-			if (!lines[i].trim()) continue;
-			const cols = parseCsvLine(lines[i]);
-			const showDate = idx.show_date >= 0 ? cols[idx.show_date] : '';
-			console.log(`Row ${i}: show_date="${showDate}", id="${idx.id >= 0 ? cols[idx.id] : ''}", editor="${idx.editor >= 0 ? cols[idx.editor] : ''}"`);
-			
-			if (showDate === today) {
-				const result = {
-					show_date: showDate,
-					id: idx.id >= 0 ? cols[idx.id] : '',
-					editor: idx.editor >= 0 ? cols[idx.editor] : '',
-				};
-				console.log('Found matching puzzle:', result);
-				return result;
-			}
-		}
-		console.log('No matching puzzle found for today');
-		return null;
-	}
+		// Also set a timeout for when the tab stays visible past midnight
+		function scheduleMidnightRefresh() {
+			const now = new Date();
+			const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1); // 1 second past midnight
+			const msUntilMidnight = tomorrow - now;
 
-	function loadPuzzleInfo() {
-		console.log('loadPuzzleInfo: Attempting to load puzzle_master.csv');
-		// Return the promise chain
-		return fetch('puzzle_master.csv')
-			.then(response => {
-				console.log('loadPuzzleInfo: CSV fetch status:', response.status);
-				if (!response.ok) throw new Error('CSV not found');
-				return response.text();
-			})
-			.then(csvText => {
-				const meta = parseCsv(csvText);
-				if (meta) {
-					console.log('loadPuzzleInfo: found today in CSV:', meta);
-					displayPuzzleInfo(meta);
-					return Promise.resolve();
+			console.log('Scheduling midnight refresh in ' + Math.round(msUntilMidnight / 1000 / 60) + ' minutes');
+
+			setTimeout(() => {
+				const today = getTodayString();
+				if (lastKnownDate !== today) {
+					console.log('Midnight reached, day changed, reloading...');
+					window.location.reload();
+				} else {
+					// Shouldn't happen, but reschedule just in case
+					scheduleMidnightRefresh();
 				}
-				console.warn('loadPuzzleInfo: no matching show_date in CSV, falling back to JSON');
-				throw new Error('No matching show_date in CSV');
-			})
-			.catch(err => {
-				console.log('loadPuzzleInfo: CSV load failed, trying puzzle_metadata.json:', err);
-				return fetch('puzzle_metadata.json')
-					.then(response => {
-						console.log('loadPuzzleInfo: JSON fetch status:', response.status);
-						if (!response.ok) throw new Error('Metadata file not found');
-						return response.json();
-					})
-					.then(data => {
-						console.log('loadPuzzleInfo: loaded data:', data);
-						if (data.metadata) {
-							displayPuzzleInfo(data.metadata);
-						} else {
-							console.warn('loadPuzzleInfo: data.metadata is missing');
-						}
-						return Promise.resolve();
-					})
-					.catch(err2 => {
-						// If metadata file doesn't exist, will get it from Godot after game loads
-						console.log('loadPuzzleInfo: puzzle_metadata.json not found; will rely on Godot callback if available:', err2);
-						return Promise.resolve(); // Always resolve so fade-in happens
-					});
-			});
-	}
+			}, msUntilMidnight);
+		}
 
+		scheduleMidnightRefresh();
+	})();
+
+	// Force service worker update check on every page load
+	// This ensures users get new versions without manual refresh
+	if ('serviceWorker' in navigator) {
+		navigator.serviceWorker.getRegistration().then((registration) => {
+			if (registration) {
+				registration.update().catch((err) => {
+					console.log('Service worker update check failed:', err);
+				});
+			}
+		});
+	}
 
 	const missing = Engine.getMissingFeatures({
 		threads: GODOT_THREADS_ENABLED,
@@ -477,24 +420,13 @@ const engine = new Engine(GODOT_CONFIG);
 			playButton.style.display = 'block';
 			gameReady = true;
 			
-			// Load puzzle info and fade it in
-			loadPuzzleInfo().then(() => {
-				// Fade in puzzle info after loading
-				const puzzleInfo = document.getElementById('puzzle-info');
-				if (puzzleInfo) {
-					setTimeout(() => {
-						puzzleInfo.style.opacity = '1';
-					}, 100);
-				}
-			}).catch(() => {
-				// Even if loading fails, fade in the static text
-				const puzzleInfo = document.getElementById('puzzle-info');
-				if (puzzleInfo) {
-					setTimeout(() => {
-						puzzleInfo.style.opacity = '1';
-					}, 100);
-				}
-			});
+			// Fade in puzzle info (Godot will call window.updatePuzzleInfo to populate it)
+			const puzzleInfo = document.getElementById('puzzle-info');
+			if (puzzleInfo) {
+				setTimeout(() => {
+					puzzleInfo.style.opacity = '1';
+				}, 100);
+			}
 		}, displayFailureNotice);
 	}
 }());
