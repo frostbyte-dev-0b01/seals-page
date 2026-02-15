@@ -4,20 +4,20 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1771117977|3741206';
+const CACHE_VERSION = '1771185331|3847890';
 /** @type {string} */
 const CACHE_PREFIX = 'Runes-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 /** @type {string} */
-const OFFLINE_URL = 'index-0.0.14-f355990.offline.html';
+const OFFLINE_URL = 'index-1.9.9-aabbca1.offline.html';
 /** @type {boolean} */
 const ENSURE_CROSSORIGIN_ISOLATION_HEADERS = true;
 // Files that will be cached on load.
 /** @type {string[]} */
-const CACHED_FILES = ["index-0.0.14-f355990.html","index-0.0.14-f355990.js","index-0.0.14-f355990.offline.html","index-0.0.14-f355990.icon.png","index-0.0.14-f355990.apple-touch-icon.png","index-0.0.14-f355990.audio.worklet.js","index-0.0.14-f355990.audio.position.worklet.js"];
+const CACHED_FILES = ["index-1.9.9-aabbca1.html","index-1.9.9-aabbca1.js","index-1.9.9-aabbca1.offline.html","index-1.9.9-aabbca1.icon.png","index-1.9.9-aabbca1.apple-touch-icon.png","index-1.9.9-aabbca1.audio.worklet.js","index-1.9.9-aabbca1.audio.position.worklet.js"];
 // Files that we might not want the user to preload, and will only be cached on first load.
 /** @type {string[]} */
-const CACHEABLE_FILES = ["index-0.0.14-f355990.wasm","index-0.0.14-f355990.pck"];
+const CACHEABLE_FILES = ["index-1.9.9-aabbca1.wasm","index-1.9.9-aabbca1.pck"];
 const FULL_CACHE = CACHED_FILES.concat(CACHEABLE_FILES);
 
 self.addEventListener('install', (event) => {

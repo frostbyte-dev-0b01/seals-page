@@ -103,7 +103,70 @@ async function getUserPuzzleStatsSummary({ puzzleDate = null, puzzleId = null, l
 	return rows;
 }
 
+async function getUserGuessAveragesForGuest({
+	guestId,
+	windowDays = 30,
+	seriesDays = 30
+}) {
+	const overallSql = `
+		SELECT
+			COUNT(*)::integer AS games_completed,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_all_time,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_all_time
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid;
+	`;
+
+	const windowSql = `
+		SELECT
+			COUNT(*)::integer AS games_completed_window,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_window,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_window
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1));
+	`;
+
+	const seriesSql = `
+		SELECT
+			ups.puzzle_date::text AS puzzle_date,
+			COUNT(*)::integer AS games_completed,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_on_win,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_total_words_found
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1))
+		GROUP BY ups.puzzle_date
+		ORDER BY ups.puzzle_date ASC;
+	`;
+
+	const db = getPool();
+	const [overallRes, windowRes, seriesRes] = await Promise.all([
+		db.query(overallSql, [guestId]),
+		db.query(windowSql, [guestId, windowDays]),
+		db.query(seriesSql, [guestId, seriesDays])
+	]);
+
+	return {
+		overall: overallRes.rows[0] || {
+			games_completed: 0,
+			avg_guesses_all_time: null,
+			avg_words_all_time: null
+		},
+		window: windowRes.rows[0] || {
+			games_completed_window: 0,
+			avg_guesses_window: null,
+			avg_words_window: null
+		},
+		series: seriesRes.rows
+	};
+}
+
 module.exports = {
+	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
 	touchGuestPrincipal,
 	upsertUserPuzzleStats
