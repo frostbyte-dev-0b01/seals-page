@@ -1,14 +1,21 @@
 # Netlify configuration for 3-Seals game deployment
 
+[functions]
+  directory = "netlify/functions"
+
+[dev]
+  publish = "."
+  functions = "netlify/functions"
+
 # Redirect root to the current versioned HTML
 [[redirects]]
   from = "/"
-  to = "/index-0.0.13-9cf7e95.html"
+  to = "/index-0.0.14-f355990.html"
   status = 200
 
 [[redirects]]
   from = "/index.html"
-  to = "/index-0.0.13-9cf7e95.html"
+  to = "/index-0.0.14-f355990.html"
   status = 301
 
 [[headers]]
