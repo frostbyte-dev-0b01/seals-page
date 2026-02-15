@@ -36,6 +36,15 @@ jobs:
             --exclude='.netlify/' \
             ./ _site/
 
+      - name: Ensure root index.html for Pages
+        run: |
+          latest_html="$(ls -1 _site/index-*.html | sort | tail -n 1)"
+          if [ -z "$latest_html" ]; then
+            echo "No versioned index-*.html found in artifact" >&2
+            exit 1
+          fi
+          cp "$latest_html" _site/index.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
