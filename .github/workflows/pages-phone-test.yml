@@ -45,6 +45,14 @@ jobs:
           fi
           cp "$latest_html" _site/index.html
 
+      - name: Disable service worker for GitHub Pages
+        run: |
+          for f in _site/index*.html; do
+            [ -f "$f" ] || continue
+            sed -i 's/"ensureCrossOriginIsolationHeaders":true/"ensureCrossOriginIsolationHeaders":false/g' "$f"
+            sed -i 's/"serviceWorker":"[^"]*"/"serviceWorker":""/g' "$f"
+          done
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
