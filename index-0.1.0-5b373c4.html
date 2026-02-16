@@ -39,30 +39,39 @@ body {
 
 #status {
 	background-color: white;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
+	display: grid;
+	grid-template-rows: 1fr auto;
+	justify-items: center;
+	align-items: stretch;
 	visibility: hidden;
 	overflow: hidden;
-	--bottom-reserve: clamp(140px, 24vh, 240px);
+	--brand-gap: clamp(12px, 2.2vh, 28px);
+	--brand-offset-y: clamp(16px, 3.5vh, 44px);
+	--splash-width: min(90vw, 620px);
+	--splash-max-height: 26vh;
+	--runes-width: min(52vw, 280px);
+	--runes-max-height: 28vh;
+	--runes-nudge-y: -8px;
 }
 
 #status-brand {
-	position: absolute;
-	inset: 0 0 calc(var(--bottom-reserve) + env(safe-area-inset-bottom)) 0;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--brand-gap);
+	transform: translateY(var(--brand-offset-y));
 	pointer-events: none;
-	overflow: hidden;
 	z-index: 1;
 }
 
 #status-splash {
-	position: absolute;
-	top: 20vh;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: min(96vw, 1240px);
-	max-height: 60vh;
+	width: var(--splash-width);
+	max-height: var(--splash-max-height);
 	height: auto;
 	object-fit: contain;
 	margin: 0;
@@ -73,14 +82,11 @@ body {
 }
 
 #status-runes {
-	position: absolute;
-	top: 50vh;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	width: min(48vw, 260px);
-	max-height: 30vh;
+	width: var(--runes-width);
+	max-height: var(--runes-max-height);
 	height: auto;
 	object-fit: contain;
+	margin-top: var(--runes-nudge-y);
 }
 
 #status-progress, #status-notice {
@@ -108,10 +114,8 @@ body {
 }
 
 #status-bottom {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
+	grid-row: 2;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -121,7 +125,10 @@ body {
 }
 
 #play-button {
-	display: none;
+	display: block;
+	visibility: hidden;
+	opacity: 0;
+	pointer-events: none;
 	padding: 1rem 2rem;
 	font-size: 1.5rem;
 	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
@@ -130,7 +137,7 @@ body {
 	border: none;
 	border-radius: 0.5rem;
 	cursor: pointer;
-	transition: background-color 0.3s;
+	transition: background-color 0.3s, opacity 0.2s ease;
 }
 
 #play-button:hover {
@@ -187,17 +194,39 @@ body {
 	margin-bottom: 1rem;
 }
 
+@media (min-width: 900px) {
+	#status {
+		--brand-gap: clamp(16px, 3.2vh, 36px);
+		--brand-offset-y: clamp(12px, 2.5vh, 36px);
+		--splash-width: min(64vw, 760px);
+		--splash-max-height: 32vh;
+		--runes-width: min(32vw, 320px);
+		--runes-max-height: 30vh;
+		--runes-nudge-y: -10px;
+	}
+}
+
 @media (max-height: 760px) {
 	#status {
-		--bottom-reserve: clamp(170px, 30vh, 300px);
+		--brand-gap: clamp(8px, 1.6vh, 16px);
+		--brand-offset-y: clamp(24px, 5vh, 48px);
+		--splash-width: min(88vw, 520px);
+		--splash-max-height: 22vh;
+		--runes-width: min(56vw, 250px);
+		--runes-max-height: 22vh;
+		--runes-nudge-y: -6px;
 	}
-	#status-splash {
-		width: min(90vw, 980px);
-		max-height: 48vh;
-	}
-	#status-runes {
-		width: min(44vw, 220px);
-		max-height: 24vh;
+}
+
+@media (orientation: portrait) and (max-aspect-ratio: 9/16) {
+	#status {
+		--brand-gap: clamp(6px, 1.1vh, 12px);
+		--brand-offset-y: clamp(34px, 7vh, 68px);
+		--splash-width: min(94vw, 560px);
+		--splash-max-height: 22vh;
+		--runes-width: min(58vw, 260px);
+		--runes-max-height: 22vh;
+		--runes-nudge-y: -5px;
 	}
 }
 
@@ -213,9 +242,9 @@ body {
 	}
 }
 		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-0.0.14-f355990.icon.png" />
-<link rel="apple-touch-icon" href="index-0.0.14-f355990.apple-touch-icon.png"/>
-<link rel="manifest" href="index-0.0.14-f355990.manifest.json">
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-0.1.0-5b373c4.icon.png" />
+<link rel="apple-touch-icon" href="index-0.1.0-5b373c4.apple-touch-icon.png"/>
+<link rel="manifest" href="index-0.1.0-5b373c4.manifest.json">
 
 	</head>
 	<body>
@@ -224,7 +253,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v0.0.14</div>
+		<div id="version-number">v0.1.0</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -246,7 +275,7 @@ body {
 			</div>
 		</div>
 
-		<script src="index-0.0.14-f355990.js"></script>
+		<script src="index-0.1.0-5b373c4.js"></script>
 		<script>
 // localStorage bridge for game save/load + user stats tracking
 (function () {
@@ -384,7 +413,7 @@ body {
 })();
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index-0.0.14-f355990","experimentalVK":false,"fileSizes":{"index-0.0.14-f355990.pck":38130016,"index-0.0.14-f355990.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-0.0.14-f355990.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index-0.1.0-5b373c4","experimentalVK":false,"fileSizes":{"index-0.1.0-5b373c4.pck":38130016,"index-0.1.0-5b373c4.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-0.1.0-5b373c4.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -393,11 +422,20 @@ const engine = new Engine(GODOT_CONFIG);
 	const statusProgress = document.getElementById('status-progress');
 	const statusNotice = document.getElementById('status-notice');
 	const playButton = document.getElementById('play-button');
+	const canvas = document.getElementById('canvas');
 	const versionTag = document.getElementById('version-number');
 
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
+
+	function focusGameCanvas() {
+		if (!canvas) return;
+		if (!canvas.hasAttribute('tabindex')) {
+			canvas.tabIndex = 0;
+		}
+		canvas.focus({ preventScroll: true });
+	}
 
 	function setStatusMode(mode) {
 		if (statusMode === mode || !initializing) {
@@ -443,9 +481,22 @@ const engine = new Engine(GODOT_CONFIG);
 		statusOverlay.remove();
 		if (versionTag) versionTag.remove(); // Force remove version tag on Play click
 		initializing = false;
+		requestAnimationFrame(() => {
+			requestAnimationFrame(focusGameCanvas);
+		});
 	}
 
 	playButton.addEventListener('click', startGame);
+
+	window.addEventListener('focus', () => {
+		if (!gameReady || initializing) return;
+		requestAnimationFrame(focusGameCanvas);
+	});
+
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden || !gameReady || initializing) return;
+		requestAnimationFrame(focusGameCanvas);
+	});
 
 	function displayPuzzleInfo(metadata) {
 		const puzzleInfo = document.getElementById('puzzle-info');
@@ -552,7 +603,9 @@ const engine = new Engine(GODOT_CONFIG);
 			},
 		}).then(() => {
 			statusProgress.style.display = 'none';
-			playButton.style.display = 'block';
+			playButton.style.visibility = 'visible';
+			playButton.style.opacity = '1';
+			playButton.style.pointerEvents = 'auto';
 			gameReady = true;
 			const puzzleInfo = document.getElementById('puzzle-info');
 			if (puzzleInfo) {

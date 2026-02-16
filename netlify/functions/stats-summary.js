@@ -23,11 +23,26 @@ exports.handler = async (event) => {
 	const params = event.queryStringParameters || {};
 	const puzzleDate = params.puzzle_date || null;
 	const puzzleId = params.puzzle_id || null;
+	const startDate = params.start_date || null;
+	const endDate = params.end_date || null;
+	const rollup = params.rollup === "1" || params.rollup === "true";
 	const rawLimit = params.limit || "50";
 	const limit = Number.parseInt(rawLimit, 10);
 
 	if (puzzleDate && !isIsoDate(puzzleDate)) {
 		return json(400, { ok: false, error: "Invalid puzzle_date (expected YYYY-MM-DD)" });
+	}
+	if (startDate && !isIsoDate(startDate)) {
+		return json(400, { ok: false, error: "Invalid start_date (expected YYYY-MM-DD)" });
+	}
+	if (endDate && !isIsoDate(endDate)) {
+		return json(400, { ok: false, error: "Invalid end_date (expected YYYY-MM-DD)" });
+	}
+	if ((startDate && !endDate) || (!startDate && endDate)) {
+		return json(400, { ok: false, error: "start_date and end_date must be provided together" });
+	}
+	if (startDate && endDate && startDate > endDate) {
+		return json(400, { ok: false, error: "start_date must be <= end_date" });
 	}
 	if (puzzleId && typeof puzzleId !== "string") {
 		return json(400, { ok: false, error: "Invalid puzzle_id" });
@@ -40,9 +55,12 @@ exports.handler = async (event) => {
 		const rows = await getUserPuzzleStatsSummary({
 			puzzleDate,
 			puzzleId,
+			startDate,
+			endDate,
+			rollup,
 			limit
 		});
-		return json(200, { ok: true, rows });
+		return json(200, { ok: true, rollup, rows });
 	} catch (err) {
 		console.error("Failed reading stats summary", err);
 		return json(500, { ok: false, error: "Failed to fetch stats summary" });

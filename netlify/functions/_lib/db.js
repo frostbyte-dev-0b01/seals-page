@@ -81,7 +81,36 @@ async function upsertUserPuzzleStats(statsRecord) {
 	return rows[0] || null;
 }
 
-async function getUserPuzzleStatsSummary({ puzzleDate = null, puzzleId = null, limit = 50 }) {
+async function getUserPuzzleStatsSummary({
+	puzzleDate = null,
+	puzzleId = null,
+	startDate = null,
+	endDate = null,
+	rollup = false,
+	limit = 50
+}) {
+	const whereSql = `
+		WHERE ($1::date IS NULL OR puzzle_date = $1::date)
+		  AND ($2::text IS NULL OR puzzle_id = $2::text)
+		  AND ($3::date IS NULL OR puzzle_date >= $3::date)
+		  AND ($4::date IS NULL OR puzzle_date <= $4::date)
+	`;
+
+	if (rollup) {
+		const sql = `
+			SELECT
+				COUNT(*)::integer AS players,
+				AVG(guesses_on_win)::numeric(10,2) AS avg_guesses_on_win,
+				AVG(total_words_found)::numeric(10,2) AS avg_total_words_found,
+				MIN(guesses_on_win)::integer AS min_guesses_on_win,
+				MAX(guesses_on_win)::integer AS max_guesses_on_win
+			FROM user_puzzle_stats
+			${whereSql};
+		`;
+		const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate]);
+		return rows;
+	}
+
 	const sql = `
 		SELECT
 			puzzle_date,
@@ -92,18 +121,80 @@ async function getUserPuzzleStatsSummary({ puzzleDate = null, puzzleId = null, l
 			MIN(guesses_on_win)::integer AS min_guesses_on_win,
 			MAX(guesses_on_win)::integer AS max_guesses_on_win
 		FROM user_puzzle_stats
-		WHERE ($1::date IS NULL OR puzzle_date = $1::date)
-		  AND ($2::text IS NULL OR puzzle_id = $2::text)
+		${whereSql}
 		GROUP BY puzzle_date, puzzle_id
 		ORDER BY puzzle_date DESC, puzzle_id ASC
-		LIMIT $3::integer;
+		LIMIT $5::integer;
 	`;
 
-	const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, limit]);
+	const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate, limit]);
 	return rows;
 }
 
+async function getUserGuessAveragesForGuest({
+	guestId,
+	windowDays = 30,
+	seriesDays = 30
+}) {
+	const overallSql = `
+		SELECT
+			COUNT(*)::integer AS games_completed,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_all_time,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_all_time
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid;
+	`;
+
+	const windowSql = `
+		SELECT
+			COUNT(*)::integer AS games_completed_window,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_window,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_window
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1));
+	`;
+
+	const seriesSql = `
+		SELECT
+			ups.puzzle_date::text AS puzzle_date,
+			COUNT(*)::integer AS games_completed,
+			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_on_win,
+			AVG(ups.total_words_found)::numeric(10,2) AS avg_total_words_found
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1))
+		GROUP BY ups.puzzle_date
+		ORDER BY ups.puzzle_date ASC;
+	`;
+
+	const db = getPool();
+	const [overallRes, windowRes, seriesRes] = await Promise.all([
+		db.query(overallSql, [guestId]),
+		db.query(windowSql, [guestId, windowDays]),
+		db.query(seriesSql, [guestId, seriesDays])
+	]);
+
+	return {
+		overall: overallRes.rows[0] || {
+			games_completed: 0,
+			avg_guesses_all_time: null,
+			avg_words_all_time: null
+		},
+		window: windowRes.rows[0] || {
+			games_completed_window: 0,
+			avg_guesses_window: null,
+			avg_words_window: null
+		},
+		series: seriesRes.rows
+	};
+}
+
 module.exports = {
+	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
 	touchGuestPrincipal,
 	upsertUserPuzzleStats
