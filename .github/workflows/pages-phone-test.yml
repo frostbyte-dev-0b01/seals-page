@@ -26,37 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare site artifact
-        run: |
-          rm -rf _site
-          mkdir -p _site
-          rsync -av --delete \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='.netlify/' \
-            ./ _site/
-
-      - name: Ensure root index.html for Pages
-        run: |
-          latest_html="$(ls -1 _site/index-*.html | sort | tail -n 1)"
-          if [ -z "$latest_html" ]; then
-            echo "No versioned index-*.html found in artifact" >&2
-            exit 1
-          fi
-          cp "$latest_html" _site/index.html
-
       - name: Disable service worker for GitHub Pages
         run: |
-          for f in _site/index*.html; do
-            [ -f "$f" ] || continue
-            sed -i 's/"ensureCrossOriginIsolationHeaders":true/"ensureCrossOriginIsolationHeaders":false/g' "$f"
-            sed -i 's/"serviceWorker":"[^"]*"/"serviceWorker":""/g' "$f"
-          done
+          sed -i 's/"ensureCrossOriginIsolationHeaders":true/"ensureCrossOriginIsolationHeaders":false/g' index.html
+          sed -i 's/"serviceWorker":"[^"]*"/"serviceWorker":""/g' index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: .
 
       - name: Deploy to GitHub Pages
         id: deployment
