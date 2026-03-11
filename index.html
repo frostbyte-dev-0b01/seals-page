@@ -435,31 +435,6 @@ body {
 		}
 	};
 
-	window.shareRunesResult = function (sharePayload) {
-		try {
-			if (!navigator.share) {
-				return 'unsupported';
-			}
-
-			const payload = (sharePayload && typeof sharePayload === 'object') ? sharePayload : {};
-			const shareData = {};
-			if (typeof payload.title === 'string' && payload.title.trim()) shareData.title = payload.title;
-			if (typeof payload.text === 'string' && payload.text.trim()) shareData.text = payload.text;
-			if (typeof payload.url === 'string' && payload.url.trim()) shareData.url = payload.url;
-
-			navigator.share(shareData).catch((err) => {
-				if (err && err.name !== 'AbortError') {
-					console.warn('Web Share API failed:', err);
-				}
-			});
-
-			return 'opened';
-		} catch (e) {
-			console.warn('Web Share API unavailable:', e);
-			return 'error';
-		}
-	};
-
 	ensureGuestSession().catch((err) => {
 		console.warn('guest session init failed:', err);
 	});
