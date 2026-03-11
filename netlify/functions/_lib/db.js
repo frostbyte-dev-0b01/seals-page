@@ -108,7 +108,7 @@ async function getUserPuzzleStatsSummary({
 			${whereSql};
 		`;
 		const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate]);
-		return rows;
+		return { rows };
 	}
 
 	const sql = `
@@ -127,8 +127,37 @@ async function getUserPuzzleStatsSummary({
 		LIMIT $5::integer;
 	`;
 
-	const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate, limit]);
-	return rows;
+	const db = getPool();
+	const { rows } = await db.query(sql, [puzzleDate, puzzleId, startDate, endDate, limit]);
+
+	// When filtering to a specific puzzle, also return guess distribution
+	let guess_distribution = {};
+	if (puzzleDate || puzzleId) {
+		try {
+			const distSql = `
+				SELECT
+					CASE
+						WHEN guesses_on_win >= 9 THEN '9+'
+						ELSE guesses_on_win::text
+					END AS bucket,
+					COUNT(*)::integer AS count
+				FROM user_puzzle_stats
+				${whereSql}
+				GROUP BY
+					CASE WHEN guesses_on_win >= 9 THEN '9+' ELSE guesses_on_win::text END
+				ORDER BY
+					MIN(CASE WHEN guesses_on_win >= 9 THEN 9999 ELSE guesses_on_win END);
+			`;
+			const distRes = await db.query(distSql, [puzzleDate, puzzleId, startDate, endDate]);
+			for (const row of distRes.rows) {
+				guess_distribution[row.bucket] = row.count;
+			}
+		} catch (err) {
+			console.error("Community distribution query failed (non-fatal):", err.message);
+		}
+	}
+
+	return { rows, guess_distribution };
 }
 
 async function getUserGuessAveragesForGuest({
@@ -171,12 +200,38 @@ async function getUserGuessAveragesForGuest({
 		ORDER BY ups.puzzle_date ASC;
 	`;
 
+	const distributionSql = `
+		SELECT
+			CASE
+				WHEN guesses_on_win >= 9 THEN '9+'
+				ELSE guesses_on_win::text
+			END AS bucket,
+			COUNT(*)::integer AS count
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		GROUP BY
+			CASE WHEN guesses_on_win >= 9 THEN '9+' ELSE guesses_on_win::text END
+		ORDER BY
+			MIN(CASE WHEN guesses_on_win >= 9 THEN 9999 ELSE guesses_on_win END);
+	`;
+
 	const db = getPool();
 	const [overallRes, windowRes, seriesRes] = await Promise.all([
 		db.query(overallSql, [guestId]),
 		db.query(windowSql, [guestId, windowDays]),
 		db.query(seriesSql, [guestId, seriesDays])
 	]);
+
+	let guess_distribution = {};
+	try {
+		const distributionRes = await db.query(distributionSql, [guestId]);
+		for (const row of distributionRes.rows) {
+			guess_distribution[row.bucket] = row.count;
+		}
+	} catch (err) {
+		console.error("Distribution query failed (non-fatal):", err.message);
+	}
 
 	return {
 		overall: overallRes.rows[0] || {
@@ -189,7 +244,8 @@ async function getUserGuessAveragesForGuest({
 			avg_guesses_window: null,
 			avg_words_window: null
 		},
-		series: seriesRes.rows
+		series: seriesRes.rows,
+		guess_distribution
 	};
 }
 
