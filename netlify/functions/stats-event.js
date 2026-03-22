@@ -1,5 +1,7 @@
 const { readGuestCookie } = require("./_lib/cookie");
-const { upsertUserPuzzleStats } = require("./_lib/db");
+const { upsertActivityTimestamp, upsertUserPuzzleStats } = require("./_lib/db");
+
+const ACTIVITY_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
 
 function json(statusCode, body) {
 	return {
@@ -28,7 +30,7 @@ function isIsoDateString(value) {
 	return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function validatePayload(payload) {
+function validateCompletionPayload(payload) {
 	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
 	if (typeof payload.puzzle_id !== "string" || payload.puzzle_id.trim() === "") {
 		return "Invalid puzzle_id";
@@ -41,6 +43,17 @@ function validatePayload(payload) {
 	}
 	if (!Number.isInteger(payload.total_words_found) || payload.total_words_found < 0) {
 		return "Invalid total_words_found";
+	}
+	return null;
+}
+
+function validateActivityPayload(payload) {
+	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
+	if (typeof payload.puzzle_id !== "string" || payload.puzzle_id.trim() === "") {
+		return "Invalid puzzle_id";
+	}
+	if (typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date)) {
+		return "Invalid puzzle_date (expected YYYY-MM-DD)";
 	}
 	return null;
 }
@@ -62,7 +75,36 @@ exports.handler = async (event) => {
 	}
 
 	const payload = parseBody(event);
-	const validationError = validatePayload(payload);
+	if (!payload || typeof payload !== "object") {
+		return json(400, { ok: false, error: "Invalid JSON payload" });
+	}
+
+	const eventType = payload.event_type;
+
+	if (eventType && !ACTIVITY_EVENT_TYPES.includes(eventType) && eventType !== "completion") {
+		return json(400, { ok: false, error: "Unknown event_type" });
+	}
+
+	if (eventType && ACTIVITY_EVENT_TYPES.includes(eventType)) {
+		const validationError = validateActivityPayload(payload);
+		if (validationError) {
+			return json(400, { ok: false, error: validationError });
+		}
+		try {
+			await upsertActivityTimestamp({
+				guest_id: guestId,
+				puzzle_id: payload.puzzle_id.trim(),
+				puzzle_date: payload.puzzle_date,
+				event_type: eventType
+			});
+		} catch (err) {
+			console.error("Failed upserting activity timestamp", err);
+			return json(500, { ok: false, error: "Failed to persist activity timestamp" });
+		}
+		return json(200, { ok: true });
+	}
+
+	const validationError = validateCompletionPayload(payload);
 	if (validationError) {
 		return json(400, { ok: false, error: validationError });
 	}

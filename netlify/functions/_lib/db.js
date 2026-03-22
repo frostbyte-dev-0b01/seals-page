@@ -64,6 +64,9 @@ async function upsertUserPuzzleStats(statsRecord) {
 			guesses_on_win = EXCLUDED.guesses_on_win,
 			total_words_found = EXCLUDED.total_words_found,
 			completed_at = EXCLUDED.completed_at,
+			first_seen_at = COALESCE(user_puzzle_stats.first_seen_at, EXCLUDED.first_seen_at),
+			first_play_at = COALESCE(user_puzzle_stats.first_play_at, EXCLUDED.first_play_at),
+			first_share_at = COALESCE(user_puzzle_stats.first_share_at, EXCLUDED.first_share_at),
 			updated_at = NOW()
 		RETURNING principal_id, puzzle_id;
 	`;
@@ -81,6 +84,53 @@ async function upsertUserPuzzleStats(statsRecord) {
 	return rows[0] || null;
 }
 
+const VALID_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
+const EVENT_TYPE_COLUMN = {
+	first_seen: "first_seen_at",
+	first_play: "first_play_at",
+	first_share: "first_share_at"
+};
+
+async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event_type }) {
+	if (!VALID_EVENT_TYPES.includes(event_type)) {
+		throw new Error(`Invalid event_type: ${event_type}`);
+	}
+
+	const tsColumn = EVENT_TYPE_COLUMN[event_type];
+
+	const sql = `
+		WITH principal AS (
+			INSERT INTO principals (principal_type, guest_cookie_id, last_seen_at)
+			VALUES ('guest', $1::uuid, NOW())
+			ON CONFLICT (guest_cookie_id)
+			DO UPDATE SET last_seen_at = NOW()
+			RETURNING id
+		)
+		INSERT INTO user_puzzle_stats (
+			principal_id,
+			puzzle_id,
+			puzzle_date,
+			${tsColumn},
+			updated_at
+		)
+		SELECT
+			id,
+			$2::text,
+			$3::date,
+			NOW(),
+			NOW()
+		FROM principal
+		ON CONFLICT (principal_id, puzzle_id)
+		DO UPDATE SET
+			${tsColumn} = COALESCE(user_puzzle_stats.${tsColumn}, EXCLUDED.${tsColumn}),
+			updated_at = NOW()
+		RETURNING principal_id, puzzle_id;
+	`;
+
+	const { rows } = await getPool().query(sql, [guest_id, puzzle_id, puzzle_date]);
+	return rows[0] || null;
+}
+
 async function getUserPuzzleStatsSummary({
 	puzzleDate = null,
 	puzzleId = null,
@@ -90,7 +140,8 @@ async function getUserPuzzleStatsSummary({
 	limit = 50
 }) {
 	const whereSql = `
-		WHERE ($1::date IS NULL OR puzzle_date = $1::date)
+		WHERE completed_at IS NOT NULL
+		  AND ($1::date IS NULL OR puzzle_date = $1::date)
 		  AND ($2::text IS NULL OR puzzle_id = $2::text)
 		  AND ($3::date IS NULL OR puzzle_date >= $3::date)
 		  AND ($4::date IS NULL OR puzzle_date <= $4::date)
@@ -172,7 +223,8 @@ async function getUserGuessAveragesForGuest({
 			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_all_time
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
-		WHERE p.guest_cookie_id = $1::uuid;
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL;
 	`;
 
 	const windowSql = `
@@ -183,6 +235,7 @@ async function getUserGuessAveragesForGuest({
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
 		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1));
 	`;
 
@@ -195,6 +248,7 @@ async function getUserGuessAveragesForGuest({
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
 		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1))
 		GROUP BY ups.puzzle_date
 		ORDER BY ups.puzzle_date ASC;
@@ -210,6 +264,7 @@ async function getUserGuessAveragesForGuest({
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
 		GROUP BY
 			CASE WHEN guesses_on_win >= 9 THEN '9+' ELSE guesses_on_win::text END
 		ORDER BY
@@ -253,5 +308,6 @@ module.exports = {
 	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
 	touchGuestPrincipal,
+	upsertActivityTimestamp,
 	upsertUserPuzzleStats
 };
