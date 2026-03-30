@@ -17,6 +17,7 @@
 		<meta name="twitter:title" content="Runes">
 		<meta name="twitter:description" content="Daily Word Puzzle">
 		<meta name="twitter:image" content="https://dailyrunes.com/share-card.png">
+		<meta name="google-site-verification" content="zW63nNKhXm2L7LPf2jMFHWIqM-Ig2EGISCsZ7dkg6wM" />
 
 		<style>
 html, body, #canvas {
@@ -87,7 +88,6 @@ body {
 	width: var(--splash-width);
 	max-height: var(--splash-max-height);
 	height: auto;
-	object-fit: contain;
 	margin: 0;
 }
 
@@ -99,7 +99,6 @@ body {
 	width: var(--runes-width);
 	max-height: var(--runes-max-height);
 	height: auto;
-	object-fit: contain;
 	margin-top: var(--runes-nudge-y);
 }
 
@@ -111,6 +110,15 @@ body {
 	bottom: 10%;
 	width: 50%;
 	margin: 0 auto;
+}
+
+#status-progress.indeterminate:indeterminate {
+	animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 0.4; }
+	50% { opacity: 1; }
 }
 
 #status-notice {
@@ -267,7 +275,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v1.0.0</div>
+		<div id="version-number">v1.2.3</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -278,8 +286,55 @@ body {
 
 		<div id="status">
 			<div id="status-brand">
-				<img id="status-splash" class="show-image--true" src="RUNESTEXT.svg" alt="Runes">
-				<img id="status-runes" src="runes_full_small.svg" alt="">
+				<svg id="status-splash" class="show-image--true" width="500" height="250" viewBox="0 0 500 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Runes">
+					<g transform="translate(-150.68654,-73.361122)">
+						<g style="fill:#b78bde;fill-opacity:1" transform="matrix(7.9806578,0,0,7.9806578,185.46793,-131.14636)">
+							<path style="opacity:1;fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="M 1.451234,32.795467 1.454934,52.802795 3.912736,51.36017 3.862895,34.507152 Z"/>
+							<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 1.5848569,43.545345 9.3309481,9.245077 -0.02877,-3.401673 -9.3263891,-9.0655"/>
+							<path style="opacity:1;fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 3.4954664,34.935781 4.1406771,3.840462 -3.8073503,3.559765 0.016832,3.154717 7.0782758,-6.832926 -9.4705684,-8.989958 v 3.166864 z"/>
+						</g>
+						<g transform="matrix(7.9806578,0,0,7.9806578,185.46793,-131.14636)">
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 11.768203,29.712997 -0.03949,22.825142 2.314578,-1.426669 -0.0047,-19.328675 z"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 18.902884,29.668275 -0.0037,23.145617 2.330674,-1.401752 0.0124,-19.607811 z"/>
+							<path style="opacity:1;fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 11.780156,50.350083 8.952975,-5.348217 -0.02176,2.562522 -8.968209,5.255645 z"/>
+						</g>
+						<g transform="matrix(7.9806578,0,0,7.9806578,183.65777,-130.78433)">
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 32.818049,29.747434 -0.03949,23.064151 2.314578,-0.975909 -0.0047,-19.996771 z"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 42.263927,46.170109 -9.099506,3.700926 1.928418,1.962835 7.165309,-2.935453"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 42.256645,33.596868 -9.432557,-3.824011 -0.0026,2.657261 9.439032,3.759507"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 41.116879,39.828789 -8.297609,0.752337 1.036849,2.244927 7.229695,-0.46974"/>
+						</g>
+						<g style="fill:#50a85c;fill-opacity:1" transform="matrix(7.9806578,0,0,7.9806578,184.86517,-131.14636)">
+							<path style="fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="m 22.203319,29.837638 -0.03949,23.064151 2.314578,-1.441608 -0.0047,-19.531072 z"/>
+							<path style="fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="m 29.381319,29.844531 -0.03949,23.06415 2.314579,-1.441607 -0.0047,-19.531072 z"/>
+							<path style="opacity:1;fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="m 24.467757,31.928937 6.752773,12.414136 -0.897663,2.554073 -6.77649,-12.425174 z"/>
+						</g>
+						<g style="fill:#b78bde;fill-opacity:1" transform="matrix(7.9806578,0,0,7.9806578,182.59935,-131.5084)">
+							<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 46.357401,38.557857 6.467183,-5.511699 0.01585,-3.177489 -9.517975,7.730689"/>
+							<path style="opacity:1;fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 44.74424,36.60224 7.184768,6.455055 -1.071344,2.404499 -7.536655,-7.860435 z"/>
+							<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 49.284655,43.702165 -5.963857,6.057212 -0.0059,3.17244 9.518479,-9.059737"/>
+							<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 51.078323,45.539492 -6.241491,-6.35379 0.442646,-2.79901 7.563784,7.474803 z"/>
+						</g>
+					</g>
+				</svg>
+				<svg id="status-runes" width="200" height="200" viewBox="0 0 52.916667 52.916666" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Runes logo">
+					<g transform="translate(1.3974471,-0.07329527)">
+						<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 26.285495,48.987316 0.0746,-22.659889 -3.03795,1.101679 0.06409,19.034446 z"/>
+						<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="M 12.491418,18.221323 25.202717,29.382728 26.369431,26.369168 12.481164,14.407083"/>
+						<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="M 18.13324,34.517625 30.844537,45.67904 32.011256,42.665474 18.122987,30.703391"/>
+						<path style="fill:#b78bde;fill-opacity:1;stroke:none;stroke-width:0" d="m 12.526703,19.812704 -0.05801,12.606451 m 0,0 2.995304,-1.695543 0.03204,-13.405388 -3.024597,-2.608197"/>
+						<g transform="matrix(0.15594819,0,0,0.15594819,9.0983031,3.8727278)">
+							<path style="fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="m 91.801881,152.93895 88.513829,72.7463 -17.48988,-37.13268 -69.417295,-60.06536"/>
+							<path style="fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="M 112.22538,137.64844 111.29777,74.327774 92.728329,57.806497 92.761864,153.13948"/>
+							<path style="fill:#50a85c;fill-opacity:1;stroke:none;stroke-width:0" d="m 104.30199,159.69906 58.22357,-40.12669 -13.71273,-12.16715 -54.236419,35.51584"/>
+						</g>
+						<g transform="matrix(0.15594819,0,0,0.15594819,9.0124599,3.8666948)">
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 92.775379,57.85403 88.946771,79.07874 0.56079,-27.75245 -73.898,-61.100898"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="m 180.38116,225.75168 2.06909,-116.96912 -20.27566,-15.100559 0.52969,94.855559"/>
+							<path style="fill:#f5a85b;fill-opacity:1;stroke:none;stroke-width:0" d="M 110.52136,73.463079 183.53546,21.186876 183.65471,1.3417687 92.794929,57.899517"/>
+						</g>
+					</g>
+				</svg>
 			</div>
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
@@ -291,18 +346,19 @@ body {
 
 		<script src="index.js"></script>
 		<script>
+function todayIsoDate() {
+	const now = new Date();
+	const yyyy = now.getFullYear();
+	const mm = String(now.getMonth() + 1).padStart(2, '0');
+	const dd = String(now.getDate()).padStart(2, '0');
+	return `${yyyy}-${mm}-${dd}`;
+}
+
 // localStorage bridge for game save/load + user stats tracking
 (function () {
 	const SAVE_KEY = '3seals_save';
 	const FIRST_VISIT_KEY = '3seals_has_visited';
-
-	function todayIsoDate() {
-		const now = new Date();
-		const yyyy = now.getFullYear();
-		const mm = String(now.getMonth() + 1).padStart(2, '0');
-		const dd = String(now.getDate()).padStart(2, '0');
-		return `${yyyy}-${mm}-${dd}`;
-	}
+	let guestSessionPromise = null;
 
 	function isIsoDate(value) {
 		return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -353,13 +409,25 @@ body {
 		return !!(stateObj && Array.isArray(stateObj.found_seals) && stateObj.found_seals.length >= 3);
 	}
 
-	async function ensureGuestSession() {
-		await fetch('/.netlify/functions/session', {
+	window.ensureGuestSession = async function ensureGuestSession() {
+		if (guestSessionPromise) {
+			return guestSessionPromise;
+		}
+		guestSessionPromise = fetch('/.netlify/functions/session', {
 			method: 'POST',
 			credentials: 'include',
 			cache: 'no-store',
 			keepalive: true
+		}).then((response) => {
+			if (!response.ok) {
+				throw new Error(`session init failed: ${response.status}`);
+			}
+			return response;
+		}).catch((err) => {
+			guestSessionPromise = null;
+			throw err;
 		});
+		return guestSessionPromise;
 	}
 
 	async function upsertUserStats(payload) {
@@ -372,6 +440,34 @@ body {
 			body: JSON.stringify(payload)
 		});
 	}
+
+	// Puzzle metadata set by GDScript via updatePuzzleInfo()
+	window._puzzleMetadata = null;
+	// Track which activity events we've already sent this page load
+	const _sentActivityEvents = {};
+
+	window.sendActivityEvent = function (eventType) {
+		if (_sentActivityEvents[eventType]) return;
+		const meta = window._puzzleMetadata;
+		if (!meta || !meta.id) return;
+		_sentActivityEvents[eventType] = true;
+
+		const puzzleDate = (meta.show_date && isIsoDate(meta.show_date))
+			? meta.show_date
+			: todayIsoDate();
+
+		var payload = {
+			event_type: eventType,
+			puzzle_id: String(meta.id),
+			puzzle_date: puzzleDate
+		};
+
+		ensureGuestSession()
+			.then(function () { return upsertUserStats(payload); })
+			.catch(function (err) {
+				console.warn('activity event failed (' + eventType + '):', err);
+			});
+	};
 
 	function markCompletedAndSendIfNeeded(stateObj) {
 		if (!isCompletedState(stateObj)) return;
@@ -435,13 +531,10 @@ body {
 		}
 	};
 
-	ensureGuestSession().catch((err) => {
-		console.warn('guest session init failed:', err);
-	});
 })();
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -514,7 +607,10 @@ const engine = new Engine(GODOT_CONFIG);
 		});
 	}
 
-	playButton.addEventListener('click', startGame);
+	playButton.addEventListener('click', function () {
+		window.sendActivityEvent('first_play');
+		startGame();
+	});
 
 	window.addEventListener('focus', () => {
 		if (!gameReady || initializing) return;
@@ -533,34 +629,36 @@ const engine = new Engine(GODOT_CONFIG);
 		if (metadata) {
 			let puzzleText = '';
 			if (metadata.show_date) puzzleText += metadata.show_date + '<br>';
-			if (metadata.id) puzzleText += 'No. ' + metadata.id + '<br>';
+			if (metadata.id) {
+				let puzzleLine = 'No. ' + metadata.id;
+				if (metadata.submitted_by) puzzleLine += ' - Submitted by ' + metadata.submitted_by;
+				puzzleText += puzzleLine + '<br>';
+			}
 			if (metadata.editor) puzzleText += 'Edited by ' + metadata.editor + '<br>';
 			if (puzzleText) infoText = puzzleText + infoText;
 		}
 		puzzleInfo.innerHTML = infoText;
 	}
 
-	window.updatePuzzleInfo = displayPuzzleInfo;
-
-	function getTodayString() {
-		const now = new Date();
-		const yyyy = now.getFullYear();
-		const mm = String(now.getMonth() + 1).padStart(2, '0');
-		const dd = String(now.getDate()).padStart(2, '0');
-		return `${yyyy}-${mm}-${dd}`;
-	}
+	window.updatePuzzleInfo = function (metadata) {
+		displayPuzzleInfo(metadata);
+		if (metadata) {
+			window._puzzleMetadata = metadata;
+			window.sendActivityEvent('first_seen');
+		}
+	};
 
 	(function setupDayChangeRefresh() {
 		const lastDateKey = '3seals_last_date';
-		let lastKnownDate = localStorage.getItem(lastDateKey) || getTodayString();
+		let lastKnownDate = localStorage.getItem(lastDateKey) || todayIsoDate();
 		document.addEventListener('visibilitychange', () => {
 			if (!document.hidden) {
-				const today = getTodayString();
+				const today = todayIsoDate();
 				if (lastKnownDate !== today) {
 					window.location.reload();
 				}
 			} else {
-				lastKnownDate = getTodayString();
+				lastKnownDate = todayIsoDate();
 				localStorage.setItem(lastDateKey, lastKnownDate);
 			}
 		});
@@ -569,7 +667,7 @@ const engine = new Engine(GODOT_CONFIG);
 			const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
 			const msUntilMidnight = tomorrow - now;
 			setTimeout(() => {
-				const today = getTodayString();
+				const today = todayIsoDate();
 				if (lastKnownDate !== today) {
 					window.location.reload();
 				} else {
@@ -580,14 +678,24 @@ const engine = new Engine(GODOT_CONFIG);
 		scheduleMidnightRefresh();
 	})();
 
-	if ('serviceWorker' in navigator) {
-		navigator.serviceWorker.getRegistration().then((registration) => {
-			if (registration) {
-				registration.update().catch((err) => {
-					console.log('Service worker update check failed:', err);
-				});
-			}
-		});
+	function scheduleServiceWorkerUpdateCheck() {
+		if (!('serviceWorker' in navigator)) {
+			return;
+		}
+		const runCheck = () => {
+			navigator.serviceWorker.getRegistration().then((registration) => {
+				if (registration) {
+					registration.update().catch((err) => {
+						console.log('Service worker update check failed:', err);
+					});
+				}
+			});
+		};
+		if ('requestIdleCallback' in window) {
+			window.requestIdleCallback(runCheck, { timeout: 5000 });
+			return;
+		}
+		window.setTimeout(runCheck, 3000);
 	}
 
 	const missing = Engine.getMissingFeatures({
@@ -619,28 +727,43 @@ const engine = new Engine(GODOT_CONFIG);
 		}
 	} else {
 		setStatusMode('progress');
-		engine.startGame({
+		// Defer session init until after engine starts downloading .wasm/.pck
+		// so the large asset fetches get network priority on first visit.
+		const gameStarted = engine.startGame({
 			'onProgress': function (current, total) {
 				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
+					if (current >= total) {
+						// Download done — switch to indeterminate while wasm compiles
+						statusProgress.removeAttribute('value');
+						statusProgress.removeAttribute('max');
+						statusProgress.classList.add('indeterminate');
+					} else {
+						statusProgress.value = current;
+						statusProgress.max = total;
+					}
 				} else {
 					statusProgress.removeAttribute('value');
 					statusProgress.removeAttribute('max');
 				}
 			},
-		}).then(() => {
+		});
+		window.ensureGuestSession().catch((err) => {
+			console.warn('guest session init failed:', err);
+		});
+		gameStarted.then(() => {
 			statusProgress.style.display = 'none';
 			playButton.style.visibility = 'visible';
 			playButton.style.opacity = '1';
 			playButton.style.pointerEvents = 'auto';
 			gameReady = true;
+			scheduleServiceWorkerUpdateCheck();
 			const puzzleInfo = document.getElementById('puzzle-info');
 			if (puzzleInfo) {
 				setTimeout(() => { puzzleInfo.style.opacity = '1'; }, 100);
 			}
 		}, displayFailureNotice);
 	}
+
 }());
 		</script>
 	</body>
