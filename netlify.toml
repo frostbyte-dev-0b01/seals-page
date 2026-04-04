@@ -10,12 +10,12 @@
 # Redirect root to the current versioned HTML
 [[redirects]]
   from = "/"
-  to = "/index-1.0.3-64f49e2.html"
+  to = "/index-1.1.0-fece7d6.html"
   status = 200
 
 [[redirects]]
   from = "/index.html"
-  to = "/index-1.0.3-64f49e2.html"
+  to = "/index-1.1.0-fece7d6.html"
   status = 301
 
 [[headers]]
@@ -60,8 +60,3 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-[[headers]]
-  # Splash/branding SVGs used on the loading screen
-  for = "/*.svg"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
