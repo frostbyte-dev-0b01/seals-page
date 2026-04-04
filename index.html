@@ -61,7 +61,7 @@ body {
 	visibility: hidden;
 	overflow: hidden;
 	--brand-gap: clamp(12px, 2.2vh, 28px);
-	--brand-offset-y: clamp(16px, 3.5vh, 44px);
+	--brand-offset-y: clamp(0px, 1.8vh, 20px);
 	--splash-width: min(90vw, 620px);
 	--splash-max-height: 26vh;
 	--runes-width: min(52vw, 280px);
@@ -362,7 +362,7 @@ body {
 @media (min-width: 900px) {
 	#status {
 		--brand-gap: clamp(16px, 3.2vh, 36px);
-		--brand-offset-y: clamp(12px, 2.5vh, 36px);
+		--brand-offset-y: clamp(0px, 1.5vh, 16px);
 		--splash-width: min(64vw, 760px);
 		--splash-max-height: 32vh;
 		--runes-width: min(32vw, 320px);
@@ -375,7 +375,7 @@ body {
 @media (max-height: 760px) {
 	#status {
 		--brand-gap: clamp(8px, 1.6vh, 16px);
-		--brand-offset-y: clamp(24px, 5vh, 48px);
+		--brand-offset-y: clamp(8px, 3.2vh, 28px);
 		--splash-width: min(88vw, 520px);
 		--splash-max-height: 22vh;
 		--runes-width: min(56vw, 250px);
@@ -388,7 +388,7 @@ body {
 @media (orientation: portrait) and (max-aspect-ratio: 9/16) {
 	#status {
 		--brand-gap: clamp(6px, 1.1vh, 12px);
-		--brand-offset-y: clamp(34px, 7vh, 68px);
+		--brand-offset-y: clamp(14px, 4.4vh, 34px);
 		--splash-width: min(94vw, 560px);
 		--splash-max-height: 22vh;
 		--runes-width: min(58vw, 260px);
@@ -421,7 +421,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v4.3.11</div>
+		<div id="version-number">v4.3.12</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -721,7 +721,7 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '4.3.11';
+	let currentVersion = '4.3.12';
 	let whatsNewData = null;
 
 	function safeLocalStorageGet(key) {
