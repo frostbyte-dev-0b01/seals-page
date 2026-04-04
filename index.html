@@ -67,11 +67,15 @@ body {
 	--runes-width: min(52vw, 280px);
 	--runes-max-height: 28vh;
 	--runes-nudge-y: -8px;
+	--status-bottom-reserved: clamp(120px, 18vh, 190px);
 }
 
 #status-brand {
 	position: absolute;
-	inset: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: var(--status-bottom-reserved);
 	width: 100%;
 	display: flex;
 	flex-direction: column;
@@ -364,6 +368,7 @@ body {
 		--runes-width: min(32vw, 320px);
 		--runes-max-height: 30vh;
 		--runes-nudge-y: -10px;
+		--status-bottom-reserved: clamp(130px, 16vh, 200px);
 	}
 }
 
@@ -376,6 +381,7 @@ body {
 		--runes-width: min(56vw, 250px);
 		--runes-max-height: 22vh;
 		--runes-nudge-y: -6px;
+		--status-bottom-reserved: clamp(105px, 16vh, 160px);
 	}
 }
 
@@ -388,6 +394,7 @@ body {
 		--runes-width: min(58vw, 260px);
 		--runes-max-height: 22vh;
 		--runes-nudge-y: -5px;
+		--status-bottom-reserved: clamp(100px, 15vh, 150px);
 	}
 }
 
@@ -414,7 +421,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v4.3.3</div>
+		<div id="version-number">v4.3.11</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -714,7 +721,7 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '4.3.3';
+	let currentVersion = '4.3.11';
 	let whatsNewData = null;
 
 	function safeLocalStorageGet(key) {
