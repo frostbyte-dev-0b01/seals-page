@@ -64,6 +64,9 @@ async function upsertUserPuzzleStats(statsRecord) {
 			guesses_on_win = EXCLUDED.guesses_on_win,
 			total_words_found = EXCLUDED.total_words_found,
 			completed_at = EXCLUDED.completed_at,
+			first_seen_at = COALESCE(user_puzzle_stats.first_seen_at, EXCLUDED.first_seen_at),
+			first_play_at = COALESCE(user_puzzle_stats.first_play_at, EXCLUDED.first_play_at),
+			first_share_at = COALESCE(user_puzzle_stats.first_share_at, EXCLUDED.first_share_at),
 			updated_at = NOW()
 		RETURNING principal_id, puzzle_id;
 	`;
@@ -81,6 +84,53 @@ async function upsertUserPuzzleStats(statsRecord) {
 	return rows[0] || null;
 }
 
+const VALID_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
+const EVENT_TYPE_COLUMN = {
+	first_seen: "first_seen_at",
+	first_play: "first_play_at",
+	first_share: "first_share_at"
+};
+
+async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event_type }) {
+	if (!VALID_EVENT_TYPES.includes(event_type)) {
+		throw new Error(`Invalid event_type: ${event_type}`);
+	}
+
+	const tsColumn = EVENT_TYPE_COLUMN[event_type];
+
+	const sql = `
+		WITH principal AS (
+			INSERT INTO principals (principal_type, guest_cookie_id, last_seen_at)
+			VALUES ('guest', $1::uuid, NOW())
+			ON CONFLICT (guest_cookie_id)
+			DO UPDATE SET last_seen_at = NOW()
+			RETURNING id
+		)
+		INSERT INTO user_puzzle_stats (
+			principal_id,
+			puzzle_id,
+			puzzle_date,
+			${tsColumn},
+			updated_at
+		)
+		SELECT
+			id,
+			$2::text,
+			$3::date,
+			NOW(),
+			NOW()
+		FROM principal
+		ON CONFLICT (principal_id, puzzle_id)
+		DO UPDATE SET
+			${tsColumn} = COALESCE(user_puzzle_stats.${tsColumn}, EXCLUDED.${tsColumn}),
+			updated_at = NOW()
+		RETURNING principal_id, puzzle_id;
+	`;
+
+	const { rows } = await getPool().query(sql, [guest_id, puzzle_id, puzzle_date]);
+	return rows[0] || null;
+}
+
 async function getUserPuzzleStatsSummary({
 	puzzleDate = null,
 	puzzleId = null,
@@ -90,7 +140,8 @@ async function getUserPuzzleStatsSummary({
 	limit = 50
 }) {
 	const whereSql = `
-		WHERE ($1::date IS NULL OR puzzle_date = $1::date)
+		WHERE completed_at IS NOT NULL
+		  AND ($1::date IS NULL OR puzzle_date = $1::date)
 		  AND ($2::text IS NULL OR puzzle_id = $2::text)
 		  AND ($3::date IS NULL OR puzzle_date >= $3::date)
 		  AND ($4::date IS NULL OR puzzle_date <= $4::date)
@@ -108,7 +159,7 @@ async function getUserPuzzleStatsSummary({
 			${whereSql};
 		`;
 		const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate]);
-		return rows;
+		return { rows };
 	}
 
 	const sql = `
@@ -127,8 +178,37 @@ async function getUserPuzzleStatsSummary({
 		LIMIT $5::integer;
 	`;
 
-	const { rows } = await getPool().query(sql, [puzzleDate, puzzleId, startDate, endDate, limit]);
-	return rows;
+	const db = getPool();
+	const { rows } = await db.query(sql, [puzzleDate, puzzleId, startDate, endDate, limit]);
+
+	// When filtering to a specific puzzle, also return guess distribution
+	let guess_distribution = {};
+	if (puzzleDate || puzzleId) {
+		try {
+			const distSql = `
+				SELECT
+					CASE
+						WHEN guesses_on_win >= 9 THEN '9+'
+						ELSE guesses_on_win::text
+					END AS bucket,
+					COUNT(*)::integer AS count
+				FROM user_puzzle_stats
+				${whereSql}
+				GROUP BY
+					CASE WHEN guesses_on_win >= 9 THEN '9+' ELSE guesses_on_win::text END
+				ORDER BY
+					MIN(CASE WHEN guesses_on_win >= 9 THEN 9999 ELSE guesses_on_win END);
+			`;
+			const distRes = await db.query(distSql, [puzzleDate, puzzleId, startDate, endDate]);
+			for (const row of distRes.rows) {
+				guess_distribution[row.bucket] = row.count;
+			}
+		} catch (err) {
+			console.error("Community distribution query failed (non-fatal):", err.message);
+		}
+	}
+
+	return { rows, guess_distribution };
 }
 
 async function getUserGuessAveragesForGuest({
@@ -143,7 +223,8 @@ async function getUserGuessAveragesForGuest({
 			AVG(ups.total_words_found)::numeric(10,2) AS avg_words_all_time
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
-		WHERE p.guest_cookie_id = $1::uuid;
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL;
 	`;
 
 	const windowSql = `
@@ -154,6 +235,7 @@ async function getUserGuessAveragesForGuest({
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
 		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1));
 	`;
 
@@ -166,9 +248,27 @@ async function getUserGuessAveragesForGuest({
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
 		  AND ups.puzzle_date >= (CURRENT_DATE - ($2::integer - 1))
 		GROUP BY ups.puzzle_date
 		ORDER BY ups.puzzle_date ASC;
+	`;
+
+	const distributionSql = `
+		SELECT
+			CASE
+				WHEN guesses_on_win >= 9 THEN '9+'
+				ELSE guesses_on_win::text
+			END AS bucket,
+			COUNT(*)::integer AS count
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND ups.completed_at IS NOT NULL
+		GROUP BY
+			CASE WHEN guesses_on_win >= 9 THEN '9+' ELSE guesses_on_win::text END
+		ORDER BY
+			MIN(CASE WHEN guesses_on_win >= 9 THEN 9999 ELSE guesses_on_win END);
 	`;
 
 	const db = getPool();
@@ -177,6 +277,16 @@ async function getUserGuessAveragesForGuest({
 		db.query(windowSql, [guestId, windowDays]),
 		db.query(seriesSql, [guestId, seriesDays])
 	]);
+
+	let guess_distribution = {};
+	try {
+		const distributionRes = await db.query(distributionSql, [guestId]);
+		for (const row of distributionRes.rows) {
+			guess_distribution[row.bucket] = row.count;
+		}
+	} catch (err) {
+		console.error("Distribution query failed (non-fatal):", err.message);
+	}
 
 	return {
 		overall: overallRes.rows[0] || {
@@ -189,7 +299,8 @@ async function getUserGuessAveragesForGuest({
 			avg_guesses_window: null,
 			avg_words_window: null
 		},
-		series: seriesRes.rows
+		series: seriesRes.rows,
+		guess_distribution
 	};
 }
 
@@ -197,5 +308,6 @@ module.exports = {
 	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
 	touchGuestPrincipal,
+	upsertActivityTimestamp,
 	upsertUserPuzzleStats
 };

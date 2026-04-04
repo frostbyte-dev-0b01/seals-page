@@ -52,7 +52,7 @@ exports.handler = async (event) => {
 	}
 
 	try {
-		const rows = await getUserPuzzleStatsSummary({
+		const data = await getUserPuzzleStatsSummary({
 			puzzleDate,
 			puzzleId,
 			startDate,
@@ -60,7 +60,11 @@ exports.handler = async (event) => {
 			rollup,
 			limit
 		});
-		return json(200, { ok: true, rollup, rows });
+		const result = { ok: true, rollup, rows: data.rows || data };
+		if (data.guess_distribution) {
+			result.guess_distribution = data.guess_distribution;
+		}
+		return json(200, result);
 	} catch (err) {
 		console.error("Failed reading stats summary", err);
 		return json(500, { ok: false, error: "Failed to fetch stats summary" });
