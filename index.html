@@ -149,6 +149,133 @@ body {
 	z-index: 3;
 }
 
+#whats-new {
+	position: fixed;
+	top: 28px;
+	left: 10px;
+	width: auto;
+	max-width: min(78vw, 320px);
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	color: #5b3943;
+	opacity: 0;
+	transform: translateY(4px);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	z-index: 1000;
+}
+
+#whats-new.is-visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+#whats-new[hidden] {
+	display: none;
+}
+
+#whats-new-toggle {
+	width: auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.45rem;
+	padding: 0.28rem 0.5rem 0.32rem;
+	background: rgba(255, 255, 255, 0.82);
+	border: 1px solid rgba(245, 168, 91, 0.18);
+	border-radius: 0.55rem;
+	box-shadow: 0 1px 2px rgba(91, 57, 67, 0.06);
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	text-align: left;
+}
+
+#whats-new-toggle:hover {
+	background: rgba(255, 255, 255, 0.94);
+}
+
+#whats-new-toggle:focus-visible {
+	outline: 2px solid rgba(245, 168, 91, 0.65);
+	outline-offset: 2px;
+}
+
+#whats-new-summary {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+}
+
+#whats-new[data-expanded="true"] {
+	width: min(78vw, 320px);
+}
+
+#whats-new[data-expanded="true"] #whats-new-toggle {
+	width: 100%;
+}
+
+#whats-new-dot {
+	width: 0.5rem;
+	height: 0.5rem;
+	flex: 0 0 auto;
+	border-radius: 999px;
+	background: #f5a85b;
+	box-shadow: 0 0 0 3px rgba(245, 168, 91, 0.16);
+}
+
+#whats-new-dot[hidden] {
+	display: none;
+}
+
+#whats-new-title {
+	font-size: 0.76rem;
+	font-weight: 500;
+	letter-spacing: 0.01em;
+}
+
+#whats-new-chevron {
+	font-size: 0.72rem;
+	color: #8e6671;
+	transition: transform 0.2s ease;
+}
+
+#whats-new[data-expanded="true"] #whats-new-chevron {
+	transform: rotate(180deg);
+}
+
+#whats-new-panel {
+	margin-top: 0.45rem;
+	padding: 0.75rem 0.8rem 0.8rem;
+	background: rgba(255, 255, 255, 0.96);
+	border: 1px solid rgba(245, 168, 91, 0.2);
+	border-radius: 0.6rem;
+	box-shadow: 0 6px 20px rgba(91, 57, 67, 0.08);
+	font-size: 0.8rem;
+	line-height: 1.5;
+	color: #6a5058;
+}
+
+#whats-new-panel[hidden] {
+	display: none;
+}
+
+#whats-new-version {
+	margin: 0 0 0.45rem;
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #9a6f3d;
+}
+
+#whats-new-list {
+	margin: 0;
+	padding-left: 1.1rem;
+}
+
+#whats-new-list li + li {
+	margin-top: 0.3rem;
+}
+
 #play-button {
 	display: block;
 	visibility: hidden;
@@ -194,6 +321,16 @@ body {
 	font-size: 0.65rem;
 	color: #999;
 	z-index: 1000;
+}
+
+@media (max-width: 520px) {
+	#whats-new {
+		max-width: min(84vw, 280px);
+	}
+
+	#whats-new[data-expanded="true"] {
+		width: min(84vw, 280px);
+	}
 }
 
 /* --- Orientation Lock Styling --- */
@@ -278,7 +415,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v1.4.4</div>
+		<div id="version-number">v4.3.2</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -346,6 +483,24 @@ body {
 				<div id="puzzle-info"></div>
 			</div>
 		</div>
+		<section id="whats-new" hidden aria-label="What's new">
+			<button
+				id="whats-new-toggle"
+				type="button"
+				aria-expanded="false"
+				aria-controls="whats-new-panel"
+			>
+				<span id="whats-new-summary">
+					<span id="whats-new-dot" hidden aria-hidden="true"></span>
+					<span id="whats-new-title">What's New</span>
+				</span>
+				<span id="whats-new-chevron" aria-hidden="true">▾</span>
+			</button>
+			<div id="whats-new-panel" hidden>
+				<p id="whats-new-version"></p>
+				<ul id="whats-new-list"></ul>
+			</div>
+		</section>
 
 		<script src="index.js"></script>
 		<script>
@@ -540,6 +695,8 @@ function todayIsoDate() {
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":38130016,"index.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
+const WHATS_NEW_STORAGE_KEY = '3seals_last_seen_whats_new_version';
+const WHATS_NEW_URL = 'index.whats-new.json';
 
 (function () {
 	const statusOverlay = document.getElementById('status');
@@ -548,10 +705,131 @@ const engine = new Engine(GODOT_CONFIG);
 	const playButton = document.getElementById('play-button');
 	const canvas = document.getElementById('canvas');
 	const versionTag = document.getElementById('version-number');
+	const whatsNew = document.getElementById('whats-new');
+	const whatsNewToggle = document.getElementById('whats-new-toggle');
+	const whatsNewDot = document.getElementById('whats-new-dot');
+	const whatsNewPanel = document.getElementById('whats-new-panel');
+	const whatsNewVersion = document.getElementById('whats-new-version');
+	const whatsNewList = document.getElementById('whats-new-list');
 
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
+	let currentVersion = '4.3.2';
+	let whatsNewData = null;
+
+	function safeLocalStorageGet(key) {
+		try {
+			return window.localStorage.getItem(key);
+		} catch (_err) {
+			return null;
+		}
+	}
+
+	function safeLocalStorageSet(key, value) {
+		try {
+			window.localStorage.setItem(key, value);
+			return true;
+		} catch (_err) {
+			return false;
+		}
+	}
+
+	function hideWhatsNewDot() {
+		if (whatsNewDot) {
+			whatsNewDot.hidden = true;
+		}
+	}
+
+	function markWhatsNewSeen() {
+		hideWhatsNewDot();
+		safeLocalStorageSet(WHATS_NEW_STORAGE_KEY, currentVersion);
+	}
+
+	function setWhatsNewExpanded(expanded) {
+		if (!whatsNew || !whatsNewToggle || !whatsNewPanel) return;
+		whatsNew.dataset.expanded = expanded ? 'true' : 'false';
+		whatsNewToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+		whatsNewPanel.hidden = !expanded;
+		if (expanded) {
+			markWhatsNewSeen();
+		}
+	}
+
+	function dismissWhatsNew() {
+		if (!whatsNew) return;
+		markWhatsNewSeen();
+		setWhatsNewExpanded(false);
+		whatsNew.classList.remove('is-visible');
+		whatsNew.hidden = true;
+	}
+
+	async function loadWhatsNewData() {
+		try {
+			const response = await fetch(WHATS_NEW_URL, {
+				cache: 'no-store',
+				credentials: 'same-origin',
+			});
+			if (!response.ok) {
+				return null;
+			}
+			const payload = await response.json();
+			if (!payload || typeof payload !== 'object' || !Array.isArray(payload.items)) {
+				return null;
+			}
+			return payload;
+		} catch (_err) {
+			return null;
+		}
+	}
+
+	function renderWhatsNew() {
+		if (!whatsNew || !whatsNewToggle || !whatsNewPanel || !whatsNewList || !whatsNewVersion) {
+			return;
+		}
+
+		const items = whatsNewData && Array.isArray(whatsNewData.items) ? whatsNewData.items : [];
+		const notesVersion = whatsNewData && typeof whatsNewData.version === 'string'
+			? whatsNewData.version.trim()
+			: '';
+		const notesTitle = whatsNewData && typeof whatsNewData.title === 'string'
+			? whatsNewData.title.trim()
+			: '';
+
+		if (items.length === 0) {
+			whatsNew.hidden = true;
+			return;
+		}
+
+		whatsNewList.replaceChildren();
+		items.forEach((entry) => {
+			const item = document.createElement('li');
+			item.textContent = entry;
+			whatsNewList.appendChild(item);
+		});
+
+		if (notesTitle) {
+			const titleNode = document.getElementById('whats-new-title');
+			if (titleNode) {
+				titleNode.textContent = notesTitle;
+			}
+		}
+
+		whatsNewVersion.textContent = `Version ${notesVersion || currentVersion}`;
+		whatsNew.hidden = false;
+		whatsNew.dataset.expanded = 'false';
+		whatsNewPanel.hidden = true;
+		whatsNewToggle.setAttribute('aria-expanded', 'false');
+
+		const seenVersion = safeLocalStorageGet(WHATS_NEW_STORAGE_KEY);
+		const isUnseenVersion = seenVersion !== currentVersion;
+		if (whatsNewDot) {
+			whatsNewDot.hidden = !isUnseenVersion;
+		}
+		requestAnimationFrame(() => {
+			whatsNew.classList.add('is-visible');
+		});
+	}
 
 	function focusGameCanvas() {
 		if (!canvas) return;
@@ -602,6 +880,7 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 
 	function startGame() {
+		dismissWhatsNew();
 		statusOverlay.remove();
 		if (versionTag) versionTag.remove(); // Force remove version tag on Play click
 		initializing = false;
@@ -614,6 +893,13 @@ const engine = new Engine(GODOT_CONFIG);
 		window.sendActivityEvent('first_play');
 		startGame();
 	});
+
+	if (whatsNewToggle) {
+		whatsNewToggle.addEventListener('click', function () {
+			const expanded = whatsNewToggle.getAttribute('aria-expanded') === 'true';
+			setWhatsNewExpanded(!expanded);
+		});
+	}
 
 	window.addEventListener('focus', () => {
 		if (!gameReady || initializing) return;
@@ -753,7 +1039,9 @@ const engine = new Engine(GODOT_CONFIG);
 		window.ensureGuestSession().catch((err) => {
 			console.warn('guest session init failed:', err);
 		});
-		gameStarted.then(() => {
+		gameStarted.then(async () => {
+			whatsNewData = await loadWhatsNewData();
+			renderWhatsNew();
 			statusProgress.style.display = 'none';
 			playButton.style.visibility = 'visible';
 			playButton.style.opacity = '1';
