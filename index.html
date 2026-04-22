@@ -44,38 +44,51 @@ body {
 	outline: none;
 }
 
-#status, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
 #status {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: white;
+	background:
+		radial-gradient(circle at 50% 18%, rgba(245, 168, 91, 0.14), transparent 32%),
+		radial-gradient(circle at 18% 82%, rgba(183, 139, 222, 0.10), transparent 28%),
+		linear-gradient(180deg, #fff9f3 0%, #ffffff 44%, #fffaf5 100%);
 	position: absolute;
-	visibility: hidden;
+	inset: 0;
 	overflow: hidden;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto;
+	gap: clamp(14px, 3vh, 32px);
+	padding:
+		max(18px, env(safe-area-inset-top))
+		0
+		max(20px, env(safe-area-inset-bottom));
+	box-sizing: border-box;
+	min-height: 100dvh;
 	--brand-gap: clamp(12px, 2.2vh, 28px);
-	--brand-offset-y: clamp(0px, 1.8vh, 20px);
+	--brand-offset-y: clamp(18px, 5vh, 56px);
 	--splash-width: min(90vw, 620px);
 	--splash-max-height: 26vh;
 	--runes-width: min(52vw, 280px);
 	--runes-max-height: 28vh;
 	--runes-nudge-y: -8px;
-	--status-bottom-reserved: clamp(120px, 18vh, 190px);
+	--status-controls-reserved: clamp(160px, 24vh, 230px);
+	--status-action-height: clamp(56px, 7.5vh, 72px);
+	transition: opacity 0.42s ease, filter 0.42s ease, transform 0.42s ease;
+}
+
+#status::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		linear-gradient(120deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0)),
+		radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.32), transparent 52%);
+	pointer-events: none;
+	opacity: 0.9;
 }
 
 #status-brand {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: var(--status-bottom-reserved);
+	position: relative;
+	grid-row: 1;
+	align-self: center;
+	justify-self: center;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
@@ -85,6 +98,7 @@ body {
 	transform: translateY(var(--brand-offset-y));
 	pointer-events: none;
 	z-index: 1;
+	transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.35s ease;
 }
 
 #status-splash {
@@ -105,23 +119,103 @@ body {
 	margin-top: var(--runes-nudge-y);
 }
 
-#status-progress, #status-notice {
+#status-progress, #status-progress-text, #status-notice {
 	display: none;
 }
 
+#status-controls {
+	grid-row: 2;
+	width: 100%;
+	min-height: var(--status-controls-reserved);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 0 20px 0.25rem;
+	box-sizing: border-box;
+	gap: 0.55rem;
+	z-index: 3;
+	transition: transform 0.42s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.3s ease;
+}
+
+#status-action {
+	display: grid;
+	place-items: center;
+	min-height: var(--status-action-height);
+	width: 100%;
+}
+
+#status-action > * {
+	grid-area: 1 / 1;
+}
+
 #status-progress {
-	bottom: 10%;
-	width: 50%;
+	position: relative;
+	width: 56px;
+	height: 56px;
+	z-index: 2;
+	transition: opacity 0.28s ease;
+}
+
+#status-progress-text {
+	position: relative;
 	margin: 0 auto;
+	color: #5b3943;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	font-size: 0.75rem;
+	font-weight: 500;
+	letter-spacing: 0.01em;
+	text-align: center;
+	z-index: 2;
 }
 
-#status-progress.indeterminate:indeterminate {
-	animation: pulse 1.2s ease-in-out infinite;
+.status-progress-ring {
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+	transform-origin: 50% 50%;
+	will-change: transform;
 }
 
-@keyframes pulse {
+.status-progress-ring-track {
+	fill: none;
+	stroke: rgba(183, 139, 222, 0.18);
+	stroke-width: 4;
+}
+
+.status-progress-ring-fill {
+	fill: none;
+	stroke: #f5a85b;
+	stroke-width: 4;
+	stroke-linecap: round;
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
+	transition: stroke-dashoffset 0.2s linear;
+}
+
+#status-progress.indeterminate {
+	animation: ring-pulse 1.2s ease-in-out infinite;
+	will-change: opacity;
+}
+
+#status-progress.indeterminate .status-progress-ring {
+	animation: ring-rotate 0.95s linear infinite;
+}
+
+#status-progress.indeterminate .status-progress-ring-fill {
+	stroke-dasharray: 28 72;
+	stroke-dashoffset: 0;
+	transition: none;
+}
+
+@keyframes ring-pulse {
 	0%, 100% { opacity: 0.4; }
 	50% { opacity: 1; }
+}
+
+@keyframes ring-rotate {
+	from { transform: rotate(-90deg); }
+	to { transform: rotate(270deg); }
 }
 
 #status-notice {
@@ -131,25 +225,12 @@ body {
 	color: #e0e0e0;
 	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
 	line-height: 1.3;
-	margin: 0 2rem;
+	margin: 0 auto;
+	max-width: min(86vw, 420px);
 	overflow: hidden;
 	padding: 1rem;
 	text-align: center;
 	z-index: 1;
-}
-
-#status-bottom {
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding-bottom: max(20px, env(safe-area-inset-bottom));
-	gap: 1rem;
-	z-index: 3;
 }
 
 #whats-new {
@@ -287,20 +368,35 @@ body {
 	padding: clamp(0.75rem, 1.8vh, 1.1rem) 1.65rem;
 	font-size: 1.5rem;
 	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	background-color: #4CAF50;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	background: linear-gradient(180deg, #55c95d 0%, #43ad4b 100%);
 	color: white;
 	border: none;
-	border-radius: 0.5rem;
+	border-radius: 999px;
+	box-shadow: 0 12px 28px rgba(67, 173, 75, 0.24);
 	cursor: pointer;
-	transition: background-color 0.3s, opacity 0.2s ease;
+	transform: translateY(8px) scale(0.98);
+	transition:
+		background 0.28s ease,
+		box-shadow 0.28s ease,
+		opacity 0.26s ease,
+		transform 0.36s cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
 #play-button:hover {
-	background-color: #45a049;
+	background: linear-gradient(180deg, #5fd468 0%, #46b94f 100%);
+	box-shadow: 0 16px 36px rgba(67, 173, 75, 0.28);
 }
 
 #play-button:active {
-	background-color: #3d8b40;
+	background: linear-gradient(180deg, #48b651 0%, #3b9842 100%);
+	box-shadow: 0 8px 18px rgba(67, 173, 75, 0.2);
+}
+
+#play-button:focus-visible {
+	outline: 3px solid rgba(245, 168, 91, 0.42);
+	outline-offset: 3px;
 }
 
 #puzzle-info {
@@ -310,10 +406,21 @@ body {
 	color: #666;
 	line-height: 1.6;
 	width: 100%;
-	padding: 0 20px;
+	margin-top: 0.35rem;
 	box-sizing: border-box;
 	opacity: 0;
-	transition: opacity 0.5s ease-in;
+	transform: translateY(8px);
+	transition: opacity 0.5s ease-in, transform 0.45s ease;
+}
+
+#puzzle-info.is-visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+#puzzle-info-number,
+#puzzle-info-editor {
+	min-height: 1.6em;
 }
 
 #version-number {
@@ -324,6 +431,41 @@ body {
 	font-size: 0.65rem;
 	color: #999;
 	z-index: 1000;
+	transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+#status.is-ready #play-button {
+	transform: translateY(0) scale(1);
+}
+
+#status.is-ready #play-button:hover {
+	transform: translateY(-2px) scale(1.01);
+}
+
+#status.is-ready #play-button:active {
+	transform: translateY(1px) scale(0.985);
+}
+
+#status.is-launching {
+	opacity: 0;
+	filter: blur(6px);
+	transform: scale(1.012);
+}
+
+#status.is-launching #status-brand {
+	transform: translateY(calc(var(--brand-offset-y) - 10px)) scale(0.985);
+	opacity: 0;
+}
+
+#status.is-launching #status-controls {
+	opacity: 0;
+	transform: translateY(12px);
+}
+
+body.is-launching-game #whats-new,
+body.is-launching-game #version-number {
+	opacity: 0;
+	transform: translateY(-6px);
 }
 
 @media (max-width: 520px) {
@@ -362,39 +504,42 @@ body {
 @media (min-width: 900px) {
 	#status {
 		--brand-gap: clamp(16px, 3.2vh, 36px);
-		--brand-offset-y: clamp(0px, 1.5vh, 16px);
+		--brand-offset-y: clamp(24px, 5vh, 64px);
 		--splash-width: min(64vw, 760px);
 		--splash-max-height: 32vh;
 		--runes-width: min(32vw, 320px);
 		--runes-max-height: 30vh;
 		--runes-nudge-y: -10px;
-		--status-bottom-reserved: clamp(130px, 16vh, 200px);
+		--status-controls-reserved: clamp(170px, 22vh, 230px);
+		--status-action-height: clamp(60px, 7vh, 72px);
 	}
 }
 
 @media (max-height: 760px) {
 	#status {
 		--brand-gap: clamp(8px, 1.6vh, 16px);
-		--brand-offset-y: clamp(8px, 3.2vh, 28px);
+		--brand-offset-y: clamp(16px, 4vh, 40px);
 		--splash-width: min(88vw, 520px);
 		--splash-max-height: 22vh;
 		--runes-width: min(56vw, 250px);
 		--runes-max-height: 22vh;
 		--runes-nudge-y: -6px;
-		--status-bottom-reserved: clamp(105px, 16vh, 160px);
+		--status-controls-reserved: clamp(150px, 22vh, 200px);
+		--status-action-height: clamp(54px, 7vh, 64px);
 	}
 }
 
 @media (orientation: portrait) and (max-aspect-ratio: 9/16) {
 	#status {
 		--brand-gap: clamp(6px, 1.1vh, 12px);
-		--brand-offset-y: clamp(14px, 4.4vh, 34px);
+		--brand-offset-y: clamp(20px, 5vh, 48px);
 		--splash-width: min(94vw, 560px);
 		--splash-max-height: 22vh;
 		--runes-width: min(58vw, 260px);
 		--runes-max-height: 22vh;
 		--runes-nudge-y: -5px;
-		--status-bottom-reserved: clamp(100px, 15vh, 150px);
+		--status-controls-reserved: clamp(146px, 22vh, 196px);
+		--status-action-height: clamp(54px, 7vh, 64px);
 	}
 }
 
@@ -410,7 +555,10 @@ body {
 	}
 }
 		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+		<link rel="preload" as="fetch" type="application/wasm" crossorigin="anonymous" href="index.wasm">
+		<link rel="preload" as="fetch" crossorigin="anonymous" href="index.pck">
+		<link rel="preload" as="fetch" crossorigin="anonymous" href="index.puzzles.json">
+<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <link rel="manifest" href="index.manifest.json">
 
@@ -421,7 +569,7 @@ body {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v4.3.134</div>
+		<div id="version-number">v1.0.0</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -482,11 +630,24 @@ body {
 					</g>
 				</svg>
 			</div>
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-			<div id="status-bottom">
-				<button id="play-button">Play</button>
-				<div id="puzzle-info"></div>
+			<div id="status-controls">
+				<div id="status-action">
+					<div id="status-progress" class="indeterminate" role="progressbar" aria-label="Loading" aria-busy="true">
+						<svg class="status-progress-ring" viewBox="0 0 64 64" aria-hidden="true">
+							<circle class="status-progress-ring-track" cx="32" cy="32" r="28"/>
+							<circle class="status-progress-ring-fill" cx="32" cy="32" r="28" pathLength="100"/>
+						</svg>
+					</div>
+					<button id="play-button">Play</button>
+				</div>
+				<div id="status-progress-text">Loading assets...</div>
+				<div id="status-notice"></div>
+				<div id="puzzle-info">
+					<div id="puzzle-info-number"></div>
+					<div id="puzzle-info-editor"></div>
+					<div id="puzzle-info-date"></div>
+					<div>Email: dailyrunesgame@gmail.com</div>
+				</div>
 			</div>
 		</div>
 		<section id="whats-new" hidden aria-label="What's new">
@@ -703,14 +864,21 @@ const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 const WHATS_NEW_STORAGE_KEY = '3seals_last_seen_whats_new_version';
 const WHATS_NEW_URL = 'index.whats-new.json';
+const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 
 (function () {
 	const statusOverlay = document.getElementById('status');
 	const statusProgress = document.getElementById('status-progress');
+	const statusProgressRingFill = statusProgress ? statusProgress.querySelector('.status-progress-ring-fill') : null;
+	const statusProgressText = document.getElementById('status-progress-text');
 	const statusNotice = document.getElementById('status-notice');
 	const playButton = document.getElementById('play-button');
 	const canvas = document.getElementById('canvas');
 	const versionTag = document.getElementById('version-number');
+	const puzzleInfoEl = document.getElementById('puzzle-info');
+	const puzzleInfoDate = document.getElementById('puzzle-info-date');
+	const puzzleInfoNumber = document.getElementById('puzzle-info-number');
+	const puzzleInfoEditor = document.getElementById('puzzle-info-editor');
 	const whatsNew = document.getElementById('whats-new');
 	const whatsNewToggle = document.getElementById('whats-new-toggle');
 	const whatsNewDot = document.getElementById('whats-new-dot');
@@ -721,8 +889,117 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '4.3.134';
+	let currentVersion = '1.0.0';
 	let whatsNewData = null;
+	let launchStarted = false;
+	let trackedAssetRequestsStarted = false;
+	let trackedDownloadComplete = false;
+	let preparePhaseStarted = false;
+
+	const LAUNCH_TRANSITION_MS = 430;
+
+	const trackedAssets = Object.entries(GODOT_CONFIG.fileSizes || {})
+		.filter(([name, size]) => (name.endsWith('.pck') || name.endsWith('.wasm')) && Number(size) > 0)
+		.map(([name, size]) => ({
+			name,
+			pathname: new URL(name, window.location.href).pathname,
+			expectedBytes: Number(size),
+			loadedBytes: 0,
+			done: false,
+		}));
+	const trackedAssetsByPathname = new Map(
+		trackedAssets.map((asset) => [asset.pathname, asset]),
+	);
+	const totalTrackedDownloadBytes = trackedAssets.reduce((sum, asset) => sum + asset.expectedBytes, 0);
+	const nativeFetch = window.fetch.bind(window);
+
+	function setStatusProgressText(text) {
+		if (statusProgressText) {
+			statusProgressText.textContent = text;
+		}
+	}
+
+	function setPreparingPhase() {
+		if (!statusProgress || preparePhaseStarted) return;
+		preparePhaseStarted = true;
+		statusProgress.setAttribute('aria-label', 'Preparing game');
+		setStatusProgressText('Preparing game...');
+	}
+
+	function updateTrackedDownloadProgress() {
+		if (!trackedAssets.length || !statusProgress) {
+			return;
+		}
+		const loadedBytes = trackedAssets.reduce((sum, asset) => {
+			return sum + Math.min(asset.loadedBytes, asset.expectedBytes);
+		}, 0);
+		if (totalTrackedDownloadBytes > 0) {
+			setStatusProgressText('Loading assets...');
+		}
+		if (!trackedDownloadComplete && trackedAssets.every((asset) => asset.done)) {
+			trackedDownloadComplete = true;
+			setPreparingPhase();
+		}
+	}
+
+	function findTrackedAsset(urlLike) {
+		try {
+			const pathname = new URL(urlLike, window.location.href).pathname;
+			return trackedAssetsByPathname.get(pathname) || null;
+		} catch (_err) {
+			return null;
+		}
+	}
+
+	function wrapTrackedResponse(response, asset) {
+		if (!response || !response.body || typeof ReadableStream === 'undefined') {
+			return response;
+		}
+		const reader = response.body.getReader();
+		return new Response(new ReadableStream({
+			async pull(controller) {
+				const result = await reader.read();
+				if (result.done) {
+					asset.done = true;
+					updateTrackedDownloadProgress();
+					controller.close();
+					return;
+				}
+				const chunk = result.value;
+				asset.loadedBytes += chunk.byteLength;
+				if (asset.loadedBytes >= asset.expectedBytes) {
+					asset.loadedBytes = asset.expectedBytes;
+				}
+				trackedAssetRequestsStarted = true;
+				updateTrackedDownloadProgress();
+				controller.enqueue(chunk);
+			},
+			cancel(reason) {
+				return reader.cancel(reason);
+			},
+		}), {
+			headers: response.headers,
+			status: response.status,
+			statusText: response.statusText,
+		});
+	}
+
+	function installProgressHooks() {
+		window.fetch = function (input, init) {
+			const requestUrl = typeof input === 'string' ? input : input && input.url;
+			const trackedAsset = requestUrl ? findTrackedAsset(requestUrl) : null;
+			return nativeFetch(input, init).then((response) => {
+				if (!trackedAsset || !response.ok) {
+					return response;
+				}
+				return wrapTrackedResponse(response, trackedAsset);
+			});
+		};
+	}
+
+	function restoreProgressHooks() {
+		window.fetch = nativeFetch;
+	}
 
 	function safeLocalStorageGet(key) {
 		try {
@@ -762,12 +1039,18 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 		}
 	}
 
-	function dismissWhatsNew() {
+	function dismissWhatsNew(immediate = true) {
 		if (!whatsNew) return;
 		markWhatsNewSeen();
 		setWhatsNewExpanded(false);
 		whatsNew.classList.remove('is-visible');
-		whatsNew.hidden = true;
+		if (immediate) {
+			whatsNew.hidden = true;
+			return;
+		}
+		window.setTimeout(() => {
+			whatsNew.hidden = true;
+		}, 220);
 	}
 
 	async function loadWhatsNewData() {
@@ -857,6 +1140,9 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 		}
 		statusOverlay.style.visibility = 'visible';
 		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		if (statusProgressText) {
+			statusProgressText.style.display = mode === 'progress' ? 'block' : 'none';
+		}
 		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
 		statusMode = mode;
 	}
@@ -886,13 +1172,21 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 	}
 
 	function startGame() {
-		dismissWhatsNew();
-		statusOverlay.remove();
-		if (versionTag) versionTag.remove(); // Force remove version tag on Play click
-		initializing = false;
-		requestAnimationFrame(() => {
-			requestAnimationFrame(focusGameCanvas);
-		});
+		if (launchStarted || !statusOverlay) return;
+		launchStarted = true;
+		dismissWhatsNew(false);
+		document.body.classList.add('is-launching-game');
+		statusOverlay.classList.add('is-launching');
+		playButton.disabled = true;
+		playButton.style.pointerEvents = 'none';
+		window.setTimeout(() => {
+			statusOverlay.remove();
+			if (versionTag) versionTag.remove();
+			initializing = false;
+			requestAnimationFrame(() => {
+				requestAnimationFrame(focusGameCanvas);
+			});
+		}, LAUNCH_TRANSITION_MS);
 	}
 
 	playButton.addEventListener('click', function () {
@@ -917,23 +1211,60 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 		requestAnimationFrame(focusGameCanvas);
 	});
 
-	function displayPuzzleInfo(metadata) {
-		const puzzleInfo = document.getElementById('puzzle-info');
-		if (!puzzleInfo) return;
-		let infoText = 'Email: dailyrunesgame@gmail.com';
-		if (metadata) {
-			let puzzleText = '';
-			if (metadata.show_date) puzzleText += metadata.show_date + '<br>';
-			if (metadata.id) {
-				let puzzleLine = 'No. ' + metadata.id;
-				if (metadata.submitted_by) puzzleLine += ' - Submitted by ' + metadata.submitted_by;
-				puzzleText += puzzleLine + '<br>';
-			}
-			if (metadata.editor) puzzleText += 'Edited by ' + metadata.editor + '<br>';
-			if (puzzleText) infoText = puzzleText + infoText;
+	function showDate() {
+		if (puzzleInfoDate && !puzzleInfoDate.textContent) {
+			puzzleInfoDate.textContent = todayIsoDate();
 		}
-		puzzleInfo.innerHTML = infoText;
 	}
+
+	function displayPuzzleInfo(metadata) {
+		if (!metadata) return;
+		if (metadata.show_date && puzzleInfoDate) {
+			puzzleInfoDate.textContent = metadata.show_date;
+		}
+		if (puzzleInfoNumber && metadata.id) {
+			let numberText = 'No. ' + metadata.id;
+			if (metadata.submitted_by) numberText += ' - Submitted by ' + metadata.submitted_by;
+			puzzleInfoNumber.textContent = numberText;
+		}
+		if (puzzleInfoEditor && metadata.editor) {
+			puzzleInfoEditor.textContent = 'Edited by ' + metadata.editor;
+		}
+		if (puzzleInfoEl) {
+			puzzleInfoEl.classList.add('is-visible');
+		}
+	}
+
+	async function loadTodaysPuzzleFromManifest() {
+		try {
+			const response = await fetch(PUZZLES_MANIFEST_URL, { credentials: 'same-origin' });
+			if (!response.ok) return;
+			const manifest = await response.json();
+			if (!manifest || typeof manifest !== 'object') return;
+			const today = todayIsoDate();
+			const fileKey = manifest.by_date && manifest.by_date[today];
+			if (fileKey) {
+				const entry = manifest.by_file && manifest.by_file[fileKey];
+				if (entry) {
+					displayPuzzleInfo({
+						id: entry.id,
+						show_date: entry.show_date,
+						editor: entry.editor,
+						submitted_by: entry.submitted_by,
+					});
+					return;
+				}
+			}
+		} catch (_err) {
+			// Fallthrough to show date + email without number/editor.
+		}
+		if (puzzleInfoEl) {
+			puzzleInfoEl.classList.add('is-visible');
+		}
+	}
+
+	showDate();
+	loadTodaysPuzzleFromManifest();
 
 	window.updatePuzzleInfo = function (metadata) {
 		displayPuzzleInfo(metadata);
@@ -1022,23 +1353,22 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 		}
 	} else {
 		setStatusMode('progress');
+		setStatusProgressText('Loading assets...');
+		installProgressHooks();
 		// Defer session init until after engine starts downloading .wasm/.pck
 		// so the large asset fetches get network priority on first visit.
 		const gameStarted = engine.startGame({
 			'onProgress': function (current, total) {
+				if (!statusProgress) return;
+				if (trackedAssetRequestsStarted || preparePhaseStarted) {
+					return;
+				}
 				if (current > 0 && total > 0) {
 					if (current >= total) {
-						// Download done — switch to indeterminate while wasm compiles
-						statusProgress.removeAttribute('value');
-						statusProgress.removeAttribute('max');
-						statusProgress.classList.add('indeterminate');
+						setPreparingPhase();
 					} else {
-						statusProgress.value = current;
-						statusProgress.max = total;
+						setStatusProgressText('Loading assets...');
 					}
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
 				}
 			},
 		});
@@ -1046,19 +1376,23 @@ const WHATS_NEW_URL = 'index.whats-new.json';
 			console.warn('guest session init failed:', err);
 		});
 		gameStarted.then(async () => {
+			restoreProgressHooks();
 			whatsNewData = await loadWhatsNewData();
 			renderWhatsNew();
-			statusProgress.style.display = 'none';
+			statusProgress.classList.remove('indeterminate');
+			statusProgress.style.opacity = '0';
+			statusProgress.style.pointerEvents = 'none';
+			if (statusProgressText) statusProgressText.style.display = 'none';
+			statusOverlay.classList.add('is-ready');
 			playButton.style.visibility = 'visible';
 			playButton.style.opacity = '1';
 			playButton.style.pointerEvents = 'auto';
 			gameReady = true;
 			scheduleServiceWorkerUpdateCheck();
-			const puzzleInfo = document.getElementById('puzzle-info');
-			if (puzzleInfo) {
-				setTimeout(() => { puzzleInfo.style.opacity = '1'; }, 100);
-			}
-		}, displayFailureNotice);
+		}, (err) => {
+			restoreProgressHooks();
+			displayFailureNotice(err);
+		});
 	}
 
 }());
