@@ -7,15 +7,19 @@
   publish = "."
   functions = "netlify/functions"
 
+[[edge_functions]]
+  function = "serve-pck"
+  path = "/index-*.pck"
+
 # Redirect root to the current versioned HTML
 [[redirects]]
   from = "/"
-  to = "/index-1.1.1-2aecf56.html"
+  to = "/index-1.1.1-8447932.html"
   status = 200
 
 [[redirects]]
   from = "/index.html"
-  to = "/index-1.1.1-2aecf56.html"
+  to = "/index-1.1.1-8447932.html"
   status = 301
 
 [[headers]]
@@ -42,6 +46,16 @@
 
 [[headers]]
   for = "/index-*.pck"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index-*.pck.br"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index-*.pck.gz"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
