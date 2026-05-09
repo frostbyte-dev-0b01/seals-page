@@ -106,6 +106,8 @@ body {
 	max-height: var(--splash-max-height);
 	height: auto;
 	margin: 0;
+	opacity: 0;
+	animation: splash-cascade-fade-in 1.0s ease 0.05s forwards;
 }
 
 #status-splash.show-image--false {
@@ -117,9 +119,16 @@ body {
 	max-height: var(--runes-max-height);
 	height: auto;
 	margin-top: var(--runes-nudge-y);
+	opacity: 0;
+	animation: splash-cascade-fade-in 1.0s ease 0.05s forwards;
 }
 
-#status-progress, #status-progress-text, #status-notice {
+@keyframes splash-cascade-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+#status-notice {
 	display: none;
 }
 
@@ -154,7 +163,7 @@ body {
 	width: 56px;
 	height: 56px;
 	z-index: 2;
-	transition: opacity 0.28s ease;
+	transition: opacity 0.5s ease;
 }
 
 #status-progress-text {
@@ -167,6 +176,7 @@ body {
 	letter-spacing: 0.01em;
 	text-align: center;
 	z-index: 2;
+	transition: opacity 0.5s ease;
 }
 
 .status-progress-ring {
@@ -194,7 +204,7 @@ body {
 }
 
 #status-progress.indeterminate {
-	animation: ring-pulse 1.2s ease-in-out infinite;
+	animation: ring-pulse 1.20s ease-in-out infinite;
 	will-change: opacity;
 }
 
@@ -209,8 +219,8 @@ body {
 }
 
 @keyframes ring-pulse {
-	0%, 100% { opacity: 0.4; }
-	50% { opacity: 1; }
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
 }
 
 @keyframes ring-rotate {
@@ -243,13 +253,23 @@ body {
 	color: #5b3943;
 	opacity: 0;
 	transform: translateY(4px);
-	transition: opacity 0.3s ease, transform 0.3s ease;
+	transition: opacity 0.5s ease, transform 0.5s ease;
 	z-index: 1000;
 }
 
 #whats-new.is-visible {
-	opacity: 1;
-	transform: translateY(0);
+	animation: whats-new-cascade 0.5s ease var(--whats-new-delay, 0ms) forwards;
+}
+
+@keyframes whats-new-cascade {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 #whats-new[hidden] {
@@ -380,8 +400,8 @@ body {
 	transition:
 		background 0.28s ease,
 		box-shadow 0.28s ease,
-		opacity 0.26s ease,
-		transform 0.36s cubic-bezier(0.2, 0.9, 0.2, 1);
+		opacity 0.5s ease,
+		transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
 #play-button:hover {
@@ -399,6 +419,136 @@ body {
 	outline-offset: 3px;
 }
 
+#first-play-modal[hidden] {
+	display: none;
+}
+
+#first-play-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 1200;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.25rem;
+	box-sizing: border-box;
+	background: rgba(0, 0, 0, 0.18);
+	backdrop-filter: blur(2px);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.18s ease;
+}
+
+#first-play-modal.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+#first-play-modal.is-closing {
+	opacity: 0;
+	pointer-events: none;
+}
+
+#first-play-card {
+	width: min(90vw, 560px);
+	padding: 2.25rem;
+	box-sizing: border-box;
+	text-align: center;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	background: rgba(253, 248, 235, 0.98);
+	border: 2px solid rgba(115, 89, 64, 0.28);
+	border-radius: 16px;
+	box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+	color: #2b241e;
+	opacity: 0;
+	transform: scale(0.9);
+	transform-origin: center;
+	transition:
+		transform 0.3s cubic-bezier(0.18, 0.9, 0.24, 1.12),
+		opacity 0.2s ease;
+}
+
+#first-play-modal.is-open #first-play-card {
+	opacity: 1;
+	transform: scale(1);
+}
+
+#first-play-modal.is-closing #first-play-card {
+	opacity: 0;
+	transform: scale(0.9);
+	transition:
+		transform 0.2s cubic-bezier(0.34, 0.02, 0.56, 1),
+		opacity 0.15s ease;
+}
+
+#first-play-card h2 {
+	margin: 0 0 0.75rem;
+	font-size: 40px;
+	line-height: 1.15;
+}
+
+#first-play-card p {
+	margin: 0 0 1.4rem;
+	font-size: 40px;
+	line-height: 1.45;
+	color: #5d5146;
+}
+
+#first-play-actions {
+	display: grid;
+	gap: 1rem;
+}
+
+.first-play-choice {
+	display: block;
+	width: 100%;
+	min-height: 84px;
+	padding: 0.9rem 1.25rem;
+	box-sizing: border-box;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	font-size: 40px;
+	font-weight: 700;
+	border: 2px solid #ede9e3;
+	border-radius: 16px;
+	cursor: pointer;
+	transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.first-play-choice:hover {
+	transform: translateY(-1px);
+}
+
+.first-play-choice:active {
+	transform: translateY(1px);
+}
+
+.first-play-choice.primary {
+	background: #50a85c;
+	color: #fff;
+	box-shadow: 0 10px 22px rgba(80, 168, 92, 0.22);
+}
+
+.first-play-choice.primary:hover {
+	background: #54bd61;
+	box-shadow: 0 12px 26px rgba(80, 168, 92, 0.28);
+}
+
+.first-play-choice.secondary {
+	background: #f6a85a;
+	color: #fff;
+	box-shadow: 0 10px 22px rgba(246, 168, 90, 0.22);
+}
+
+.first-play-choice.secondary:hover {
+	background: #ffb063;
+	box-shadow: 0 12px 26px rgba(246, 168, 90, 0.28);
+}
+
+.first-play-choice:focus-visible {
+	outline: 3px solid rgba(245, 168, 91, 0.45);
+	outline-offset: 3px;
+}
+
 #puzzle-info {
 	text-align: center;
 	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
@@ -410,12 +560,18 @@ body {
 	box-sizing: border-box;
 	opacity: 0;
 	transform: translateY(8px);
-	transition: opacity 0.5s ease-in, transform 0.45s ease;
+	animation: puzzle-info-cascade 1.1s ease 700ms forwards;
 }
 
-#puzzle-info.is-visible {
-	opacity: 1;
-	transform: translateY(0);
+@keyframes puzzle-info-cascade {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 #puzzle-info-number,
@@ -569,7 +725,7 @@ body.is-launching-game #version-number {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v1.0.0</div>
+		<div id="version-number">v1.2.3</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -668,7 +824,37 @@ body.is-launching-game #version-number {
 				<ul id="whats-new-list"></ul>
 			</div>
 		</section>
+		<div id="first-play-modal" hidden role="dialog" aria-modal="true" aria-labelledby="first-play-title" aria-describedby="first-play-copy">
+			<div id="first-play-card">
+				<h2 id="first-play-title">New to Runes?</h2>
+				<p id="first-play-copy">Learn the rules in 2 minutes, or jump right in.</p>
+				<div id="first-play-actions">
+					<button id="first-play-tutorial" class="first-play-choice primary" type="button">start tutorial</button>
+					<button id="first-play-puzzle" class="first-play-choice secondary" type="button">play today's puzzle</button>
+				</div>
+			</div>
+		</div>
 
+		<script>
+// Capture the splash parse-time clock before the engine script blocks the
+// event loop, and prefill today's date so puzzle info never fades in empty.
+(function () {
+	function todayIsoDate() {
+		var now = new Date();
+		var yyyy = now.getFullYear();
+		var mm = String(now.getMonth() + 1).padStart(2, '0');
+		var dd = String(now.getDate()).padStart(2, '0');
+		return yyyy + '-' + mm + '-' + dd;
+	}
+
+	window._splashCascadeStartMs = performance.now();
+
+	var puzzleInfoDate = document.getElementById('puzzle-info-date');
+	if (puzzleInfoDate && !puzzleInfoDate.textContent) {
+		puzzleInfoDate.textContent = todayIsoDate();
+	}
+})();
+		</script>
 		<script src="index.js"></script>
 		<script>
 function todayIsoDate() {
@@ -682,7 +868,9 @@ function todayIsoDate() {
 // localStorage bridge for game save/load + user stats tracking
 (function () {
 	const SAVE_KEY = '3seals_save';
+	const TUTORIAL_SAVE_KEY = '3seals_tutorial_save';
 	const FIRST_VISIT_KEY = '3seals_has_visited';
+	const TUTORIAL_LAUNCH_KEY = '3seals_launch_tutorial';
 	let guestSessionPromise = null;
 
 	function isIsoDate(value) {
@@ -824,11 +1012,30 @@ function todayIsoDate() {
 		}
 	};
 
+	window.saveTutorialState = function (stateObj) {
+		try {
+			localStorage.setItem(TUTORIAL_SAVE_KEY, JSON.stringify(stateObj));
+			return true;
+		} catch (e) {
+			console.error('Failed to save tutorial state:', e);
+			return false;
+		}
+	};
+
 	window.loadPuzzleState = function () {
 		try {
 			return localStorage.getItem(SAVE_KEY);
 		} catch (e) {
 			console.error('Failed to load game state:', e);
+			return null;
+		}
+	};
+
+	window.loadTutorialState = function () {
+		try {
+			return localStorage.getItem(TUTORIAL_SAVE_KEY);
+		} catch (e) {
+			console.error('Failed to load tutorial state:', e);
 			return null;
 		}
 	};
@@ -839,6 +1046,16 @@ function todayIsoDate() {
 			return true;
 		} catch (e) {
 			console.error('Failed to clear game state:', e);
+			return false;
+		}
+	};
+
+	window.clearTutorialState = function () {
+		try {
+			localStorage.removeItem(TUTORIAL_SAVE_KEY);
+			return true;
+		} catch (e) {
+			console.error('Failed to clear tutorial state:', e);
 			return false;
 		}
 	};
@@ -856,6 +1073,29 @@ function todayIsoDate() {
 		}
 	};
 
+	window.queueTutorialLaunch = function () {
+		try {
+			localStorage.setItem(TUTORIAL_LAUNCH_KEY, '1');
+			return true;
+		} catch (e) {
+			console.warn('Failed to queue tutorial launch:', e);
+			return false;
+		}
+	};
+
+	window.consumeTutorialLaunch = function () {
+		try {
+			if (localStorage.getItem(TUTORIAL_LAUNCH_KEY) === null) {
+				return false;
+			}
+			localStorage.removeItem(TUTORIAL_LAUNCH_KEY);
+			return true;
+		} catch (e) {
+			console.warn('Failed to consume tutorial launch flag:', e);
+			return false;
+		}
+	};
+
 })();
 		</script>
 		<script>
@@ -865,6 +1105,8 @@ const engine = new Engine(GODOT_CONFIG);
 const WHATS_NEW_STORAGE_KEY = '3seals_last_seen_whats_new_version';
 const WHATS_NEW_URL = 'index.whats-new.json';
 const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
+const FIRST_PLAY_MODAL_OPEN_DELAY_MS = 45;
+const FIRST_PLAY_MODAL_CLOSE_MS = 220;
 
 (function () {
 	const statusOverlay = document.getElementById('status');
@@ -875,7 +1117,6 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 	const playButton = document.getElementById('play-button');
 	const canvas = document.getElementById('canvas');
 	const versionTag = document.getElementById('version-number');
-	const puzzleInfoEl = document.getElementById('puzzle-info');
 	const puzzleInfoDate = document.getElementById('puzzle-info-date');
 	const puzzleInfoNumber = document.getElementById('puzzle-info-number');
 	const puzzleInfoEditor = document.getElementById('puzzle-info-editor');
@@ -885,18 +1126,28 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 	const whatsNewPanel = document.getElementById('whats-new-panel');
 	const whatsNewVersion = document.getElementById('whats-new-version');
 	const whatsNewList = document.getElementById('whats-new-list');
+	const firstPlayModal = document.getElementById('first-play-modal');
+	const firstPlayTutorial = document.getElementById('first-play-tutorial');
+	const firstPlayPuzzle = document.getElementById('first-play-puzzle');
 
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '1.0.0';
+	let currentVersion = '1.2.3';
 	let whatsNewData = null;
 	let launchStarted = false;
 	let trackedAssetRequestsStarted = false;
 	let trackedDownloadComplete = false;
 	let preparePhaseStarted = false;
+	let whatsNewRendered = false;
+	let whatsNewRevealStarted = false;
+	let spinnerShown = false;
+	let playButtonShown = false;
+	let firstPlayShowTimer = 0;
+	let firstPlayHideTimer = 0;
 
 	const LAUNCH_TRANSITION_MS = 430;
+	const WHATS_NEW_REVEAL_AT_MS = 1300;
 
 	const trackedAssets = Object.entries(GODOT_CONFIG.fileSizes || {})
 		.filter(([name, size]) => (name.endsWith('.pck') || name.endsWith('.wasm')) && Number(size) > 0)
@@ -912,6 +1163,7 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 	);
 	const totalTrackedDownloadBytes = trackedAssets.reduce((sum, asset) => sum + asset.expectedBytes, 0);
 	const nativeFetch = window.fetch.bind(window);
+	const isFirefoxBrowser = /firefox|fxios/i.test(navigator.userAgent || '');
 
 	function setStatusProgressText(text) {
 		if (statusProgressText) {
@@ -985,6 +1237,12 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 	}
 
 	function installProgressHooks() {
+		// Firefox has been unreliable with the wrapped asset-stream path during
+		// startup, especially when the exported bundle is served via alternate
+		// content-encoding. Fall back to the engine's native fetch handling there.
+		if (isFirefoxBrowser) {
+			return;
+		}
 		window.fetch = function (input, init) {
 			const requestUrl = typeof input === 'string' ? input : input && input.url;
 			const trackedAsset = requestUrl ? findTrackedAsset(requestUrl) : null;
@@ -1115,6 +1373,22 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 		if (whatsNewDot) {
 			whatsNewDot.hidden = !isUnseenVersion;
 		}
+		whatsNewRendered = true;
+		maybeRevealWhatsNew();
+	}
+
+	function getRemainingSplashDelayMs(targetMs) {
+		const startMs = typeof window._splashCascadeStartMs === 'number'
+			? window._splashCascadeStartMs
+			: performance.now();
+		return Math.max(0, targetMs - (performance.now() - startMs));
+	}
+
+	function maybeRevealWhatsNew() {
+		if (!whatsNewRendered || whatsNewRevealStarted) return;
+		if (!whatsNew || whatsNew.hidden || whatsNew.classList.contains('is-visible')) return;
+		whatsNewRevealStarted = true;
+		whatsNew.style.setProperty('--whats-new-delay', `${getRemainingSplashDelayMs(WHATS_NEW_REVEAL_AT_MS)}ms`);
 		requestAnimationFrame(() => {
 			whatsNew.classList.add('is-visible');
 		});
@@ -1174,6 +1448,7 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 	function startGame() {
 		if (launchStarted || !statusOverlay) return;
 		launchStarted = true;
+		hideFirstPlayModal();
 		dismissWhatsNew(false);
 		document.body.classList.add('is-launching-game');
 		statusOverlay.classList.add('is-launching');
@@ -1189,9 +1464,83 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 		}, LAUNCH_TRANSITION_MS);
 	}
 
-	playButton.addEventListener('click', function () {
+	function shouldOfferFirstPlayChoice() {
+		try {
+			return !!(window.consumeFirstVisitFlag && window.consumeFirstVisitFlag());
+		} catch (err) {
+			console.warn('first-play prompt check failed:', err);
+			return false;
+		}
+	}
+
+	function showFirstPlayModal() {
+		if (!firstPlayModal) return;
+		window.clearTimeout(firstPlayShowTimer);
+		window.clearTimeout(firstPlayHideTimer);
+		firstPlayModal.classList.remove('is-open');
+		firstPlayModal.classList.remove('is-closing');
+		firstPlayModal.hidden = false;
+		firstPlayShowTimer = window.setTimeout(() => {
+			if (!firstPlayModal || firstPlayModal.hidden) return;
+			firstPlayModal.classList.add('is-open');
+		}, FIRST_PLAY_MODAL_OPEN_DELAY_MS);
+		playButton.disabled = true;
+		playButton.style.pointerEvents = 'none';
+		window.setTimeout(() => {
+			if (firstPlayTutorial) firstPlayTutorial.focus();
+		}, 0);
+	}
+
+	function hideFirstPlayModal() {
+		if (firstPlayModal && !firstPlayModal.hidden) {
+			window.clearTimeout(firstPlayShowTimer);
+			window.clearTimeout(firstPlayHideTimer);
+			firstPlayModal.classList.remove('is-open');
+			firstPlayModal.classList.add('is-closing');
+			firstPlayHideTimer = window.setTimeout(() => {
+				firstPlayModal.hidden = true;
+				firstPlayModal.classList.remove('is-closing');
+			}, FIRST_PLAY_MODAL_CLOSE_MS);
+		}
+		if (!launchStarted) {
+			playButton.disabled = false;
+			playButton.style.pointerEvents = 'auto';
+		}
+	}
+
+	function launchDailyPuzzle() {
 		window.sendActivityEvent('first_play');
 		startGame();
+	}
+
+	function launchTutorialPuzzle() {
+		if (window.clearTutorialState) window.clearTutorialState();
+		if (window.queueTutorialLaunch) window.queueTutorialLaunch();
+		startGame();
+	}
+
+	playButton.addEventListener('click', function () {
+		if (shouldOfferFirstPlayChoice()) {
+			showFirstPlayModal();
+			return;
+		}
+		launchDailyPuzzle();
+	});
+
+	if (firstPlayTutorial) {
+		firstPlayTutorial.addEventListener('click', launchTutorialPuzzle);
+	}
+
+	if (firstPlayPuzzle) {
+		firstPlayPuzzle.addEventListener('click', launchDailyPuzzle);
+	}
+
+	document.addEventListener('keydown', function (event) {
+		if (!firstPlayModal || firstPlayModal.hidden) return;
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			launchDailyPuzzle();
+		}
 	});
 
 	if (whatsNewToggle) {
@@ -1211,12 +1560,6 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 		requestAnimationFrame(focusGameCanvas);
 	});
 
-	function showDate() {
-		if (puzzleInfoDate && !puzzleInfoDate.textContent) {
-			puzzleInfoDate.textContent = todayIsoDate();
-		}
-	}
-
 	function displayPuzzleInfo(metadata) {
 		if (!metadata) return;
 		if (metadata.show_date && puzzleInfoDate) {
@@ -1230,17 +1573,62 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 		if (puzzleInfoEditor && metadata.editor) {
 			puzzleInfoEditor.textContent = 'Edited by ' + metadata.editor;
 		}
-		if (puzzleInfoEl) {
-			puzzleInfoEl.classList.add('is-visible');
+	}
+
+	function showSpinner() {
+		if (spinnerShown || playButtonShown || !initializing) return;
+		spinnerShown = true;
+		if (statusProgress) {
+			statusProgress.style.display = 'block';
+			statusProgress.style.opacity = '1';
+			statusProgress.style.pointerEvents = 'auto';
 		}
+		if (statusProgressText) {
+			statusProgressText.style.display = 'block';
+			statusProgressText.style.opacity = '1';
+		}
+		if (statusProgress) {
+			statusProgress.classList.add('indeterminate');
+		}
+	}
+
+	function hideSpinner() {
+		if (!spinnerShown) return;
+		spinnerShown = false;
+		if (statusProgress) {
+			statusProgress.classList.remove('indeterminate');
+			statusProgress.style.opacity = '0';
+			statusProgress.style.pointerEvents = 'none';
+		}
+		if (statusProgressText) {
+			statusProgressText.style.opacity = '0';
+		}
+	}
+
+	function showPlayButton() {
+		if (playButtonShown || !initializing) return;
+		playButtonShown = true;
+		hideSpinner();
+		if (statusProgress) {
+			statusProgress.classList.remove('indeterminate');
+			statusProgress.style.pointerEvents = 'none';
+		}
+		statusOverlay.classList.add('is-ready');
+		playButton.style.visibility = 'visible';
+		playButton.style.opacity = '1';
+		playButton.style.pointerEvents = 'auto';
 	}
 
 	async function loadTodaysPuzzleFromManifest() {
 		try {
 			const response = await fetch(PUZZLES_MANIFEST_URL, { credentials: 'same-origin' });
-			if (!response.ok) return;
+			if (!response.ok) {
+				return;
+			}
 			const manifest = await response.json();
-			if (!manifest || typeof manifest !== 'object') return;
+			if (!manifest || typeof manifest !== 'object') {
+				return;
+			}
 			const today = todayIsoDate();
 			const fileKey = manifest.by_date && manifest.by_date[today];
 			if (fileKey) {
@@ -1256,15 +1644,12 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 				}
 			}
 		} catch (_err) {
-			// Fallthrough to show date + email without number/editor.
-		}
-		if (puzzleInfoEl) {
-			puzzleInfoEl.classList.add('is-visible');
+			// Fallthrough — show date + email without number/editor.
 		}
 	}
 
-	showDate();
 	loadTodaysPuzzleFromManifest();
+	showSpinner();
 
 	window.updatePuzzleInfo = function (metadata) {
 		displayPuzzleInfo(metadata);
@@ -1352,9 +1737,14 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 			displayFailureNotice(missingMsg + missing.join('\n'));
 		}
 	} else {
-		setStatusMode('progress');
 		setStatusProgressText('Loading assets...');
 		installProgressHooks();
+		// Kick off whats-new fetch in parallel with the engine load so the
+		// data is likely ready by the time the cascade reaches it (~1.55s).
+		loadWhatsNewData().then((data) => {
+			whatsNewData = data;
+			renderWhatsNew();
+		});
 		// Defer session init until after engine starts downloading .wasm/.pck
 		// so the large asset fetches get network priority on first visit.
 		const gameStarted = engine.startGame({
@@ -1377,17 +1767,8 @@ const PUZZLES_MANIFEST_URL = 'index.puzzles.json';
 		});
 		gameStarted.then(async () => {
 			restoreProgressHooks();
-			whatsNewData = await loadWhatsNewData();
-			renderWhatsNew();
-			statusProgress.classList.remove('indeterminate');
-			statusProgress.style.opacity = '0';
-			statusProgress.style.pointerEvents = 'none';
-			if (statusProgressText) statusProgressText.style.display = 'none';
-			statusOverlay.classList.add('is-ready');
-			playButton.style.visibility = 'visible';
-			playButton.style.opacity = '1';
-			playButton.style.pointerEvents = 'auto';
 			gameReady = true;
+			showPlayButton();
 			scheduleServiceWorkerUpdateCheck();
 		}, (err) => {
 			restoreProgressHooks();
