@@ -1,9 +1,7 @@
 {
-  "version": "1.1.2",
+  "version": "1.0.15",
   "title": "What's New",
   "items": [
-    "Added a tutorial mode for new players",
-    "Added a visual bar to indicate guess progress",
-    "Sped up site loading time"
+    ""
   ]
 }
