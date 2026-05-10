@@ -5,7 +5,17 @@
 
 export default async function handler(request) {
 	const url = new URL(request.url);
-	const accept = (request.headers.get("Accept-Encoding") || "").toLowerCase();
+	const method = (request.method || "GET").toUpperCase();
+	const accept = (request.headers.get("accept-encoding") || "").toLowerCase();
+	const userAgent = (request.headers.get("user-agent") || "").toLowerCase();
+	const rangeHeader = request.headers.get("range");
+
+	// Keep the static/original path for requests that need normal file semantics
+	// and for Firefox, which has shown startup regressions with the compressed
+	// edge-served bundle in production.
+	if (method !== "GET" || rangeHeader || userAgent.includes("firefox") || userAgent.includes("fxios")) {
+		return;
+	}
 
 	let encoding = null;
 	let suffix = "";
