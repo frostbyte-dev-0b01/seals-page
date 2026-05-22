@@ -10,16 +10,17 @@
 [[edge_functions]]
   function = "serve-pck"
   path = "/index-*.pck"
+  cache = "manual"
 
 # Redirect root to the current versioned HTML
 [[redirects]]
   from = "/"
-  to = "/index-1.1.2-05ee6cf.html"
+  to = "/index-1.1.3-a30a849.html"
   status = 200
 
 [[redirects]]
   from = "/index.html"
-  to = "/index-1.1.2-05ee6cf.html"
+  to = "/index-1.1.3-a30a849.html"
   status = 301
 
 [[headers]]
@@ -73,4 +74,3 @@
   for = "/index-*.png"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
-

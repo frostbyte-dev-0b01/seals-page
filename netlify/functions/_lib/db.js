@@ -111,6 +111,7 @@ async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event
 			puzzle_id,
 			puzzle_date,
 			${tsColumn},
+			completed_at,
 			updated_at
 		)
 		SELECT
@@ -118,6 +119,7 @@ async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event
 			$2::text,
 			$3::date,
 			NOW(),
+			NULL,
 			NOW()
 		FROM principal
 		ON CONFLICT (principal_id, puzzle_id)
@@ -128,6 +130,91 @@ async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event
 	`;
 
 	const { rows } = await getPool().query(sql, [guest_id, puzzle_id, puzzle_date]);
+	return rows[0] || null;
+}
+
+async function upsertLoadPerfEvent({
+	guest_id,
+	session_load_id,
+	puzzle_id = null,
+	puzzle_date = null,
+	app_version = null,
+	page_path = null,
+	user_agent = null,
+	marks = {},
+	durations = {},
+	assets = [],
+	service_worker = {}
+}) {
+	// Beacons can fire 1–3 times per pageload (engine ready / gameplay ready /
+	// pagehide). The upsert merges incoming jsonb so a later partial beacon
+	// adds new marks without dropping earlier ones. `assets` is replaced
+	// rather than merged when non-empty, since the Resource Timing snapshot is
+	// already cumulative — later snapshots strictly supersede earlier ones.
+	const sql = `
+		WITH principal AS (
+			INSERT INTO principals (principal_type, guest_cookie_id, last_seen_at)
+			VALUES ('guest', $1::uuid, NOW())
+			ON CONFLICT (guest_cookie_id)
+			DO UPDATE SET last_seen_at = NOW()
+			RETURNING id
+		)
+		INSERT INTO load_perf_events (
+			session_load_id,
+			principal_id,
+			puzzle_id,
+			puzzle_date,
+			app_version,
+			page_path,
+			user_agent,
+			marks,
+			durations,
+			assets,
+			service_worker
+		)
+		SELECT
+			$2::uuid,
+			id,
+			NULLIF($3::text, ''),
+			$4::date,
+			NULLIF($5::text, ''),
+			NULLIF($6::text, ''),
+			NULLIF($7::text, ''),
+			$8::jsonb,
+			$9::jsonb,
+			$10::jsonb,
+			$11::jsonb
+		FROM principal
+		ON CONFLICT (session_load_id) DO UPDATE SET
+			puzzle_id = COALESCE(EXCLUDED.puzzle_id, load_perf_events.puzzle_id),
+			puzzle_date = COALESCE(EXCLUDED.puzzle_date, load_perf_events.puzzle_date),
+			app_version = COALESCE(EXCLUDED.app_version, load_perf_events.app_version),
+			page_path = COALESCE(EXCLUDED.page_path, load_perf_events.page_path),
+			user_agent = COALESCE(EXCLUDED.user_agent, load_perf_events.user_agent),
+			marks = load_perf_events.marks || EXCLUDED.marks,
+			durations = load_perf_events.durations || EXCLUDED.durations,
+			assets = CASE
+				WHEN jsonb_array_length(EXCLUDED.assets) > 0 THEN EXCLUDED.assets
+				ELSE load_perf_events.assets
+			END,
+			service_worker = load_perf_events.service_worker || EXCLUDED.service_worker,
+			updated_at = NOW()
+		RETURNING id;
+	`;
+
+	const { rows } = await getPool().query(sql, [
+		guest_id,
+		session_load_id,
+		puzzle_id,
+		puzzle_date,
+		app_version,
+		page_path,
+		user_agent,
+		JSON.stringify(marks),
+		JSON.stringify(durations),
+		JSON.stringify(assets),
+		JSON.stringify(service_worker)
+	]);
 	return rows[0] || null;
 }
 
@@ -309,5 +396,6 @@ module.exports = {
 	getUserPuzzleStatsSummary,
 	touchGuestPrincipal,
 	upsertActivityTimestamp,
+	upsertLoadPerfEvent,
 	upsertUserPuzzleStats
 };

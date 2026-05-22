@@ -1,7 +1,9 @@
 const { readGuestCookie } = require("./_lib/cookie");
-const { upsertActivityTimestamp, upsertUserPuzzleStats } = require("./_lib/db");
+const { upsertActivityTimestamp, upsertLoadPerfEvent, upsertUserPuzzleStats } = require("./_lib/db");
 
 const ACTIVITY_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
+const MAX_LOAD_PERF_JSON_BYTES = 24000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function json(statusCode, body) {
 	return {
@@ -58,6 +60,36 @@ function validateActivityPayload(payload) {
 	return null;
 }
 
+function byteLength(value) {
+	return Buffer.byteLength(JSON.stringify(value || null), "utf8");
+}
+
+function validateLoadPerfPayload(payload) {
+	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
+	if (typeof payload.session_load_id !== "string" || !UUID_RE.test(payload.session_load_id)) {
+		return "Invalid session_load_id (expected UUID)";
+	}
+	if (payload.puzzle_date != null && (typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date))) {
+		return "Invalid puzzle_date (expected YYYY-MM-DD)";
+	}
+	if (byteLength(payload) > MAX_LOAD_PERF_JSON_BYTES) {
+		return "Load performance payload too large";
+	}
+	if (payload.marks != null && (typeof payload.marks !== "object" || Array.isArray(payload.marks))) {
+		return "Invalid marks";
+	}
+	if (payload.durations != null && (typeof payload.durations !== "object" || Array.isArray(payload.durations))) {
+		return "Invalid durations";
+	}
+	if (payload.assets != null && !Array.isArray(payload.assets)) {
+		return "Invalid assets";
+	}
+	if (payload.service_worker != null && (typeof payload.service_worker !== "object" || Array.isArray(payload.service_worker))) {
+		return "Invalid service_worker";
+	}
+	return null;
+}
+
 exports.handler = async (event) => {
 	if (event.httpMethod !== "POST") {
 		return json(405, { ok: false, error: "Method Not Allowed" });
@@ -81,8 +113,34 @@ exports.handler = async (event) => {
 
 	const eventType = payload.event_type;
 
-	if (eventType && !ACTIVITY_EVENT_TYPES.includes(eventType) && eventType !== "completion") {
+	if (eventType && !ACTIVITY_EVENT_TYPES.includes(eventType) && eventType !== "completion" && eventType !== "load_perf") {
 		return json(400, { ok: false, error: "Unknown event_type" });
+	}
+
+	if (eventType === "load_perf") {
+		const validationError = validateLoadPerfPayload(payload);
+		if (validationError) {
+			return json(400, { ok: false, error: validationError });
+		}
+		try {
+			await upsertLoadPerfEvent({
+				guest_id: guestId,
+				session_load_id: payload.session_load_id,
+				puzzle_id: typeof payload.puzzle_id === "string" ? payload.puzzle_id.trim() : null,
+				puzzle_date: payload.puzzle_date || null,
+				app_version: typeof payload.app_version === "string" ? payload.app_version.trim() : null,
+				page_path: typeof payload.page_path === "string" ? payload.page_path.slice(0, 512) : null,
+				user_agent: typeof payload.user_agent === "string" ? payload.user_agent.slice(0, 512) : null,
+				marks: payload.marks || {},
+				durations: payload.durations || {},
+				assets: payload.assets || [],
+				service_worker: payload.service_worker || {}
+			});
+		} catch (err) {
+			console.error("Failed upserting load performance event", err);
+			return json(500, { ok: false, error: "Failed to persist load performance event" });
+		}
+		return json(200, { ok: true });
 	}
 
 	if (eventType && ACTIVITY_EVENT_TYPES.includes(eventType)) {
