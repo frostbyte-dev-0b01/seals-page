@@ -15,12 +15,12 @@
 # Redirect root to the current versioned HTML
 [[redirects]]
   from = "/"
-  to = "/index-1.2.0-0584d52.html"
+  to = "/index-1.2.1-7a392e7.html"
   status = 200
 
 [[redirects]]
   from = "/index.html"
-  to = "/index-1.2.0-0584d52.html"
+  to = "/index-1.2.1-7a392e7.html"
   status = 301
 
 [[headers]]

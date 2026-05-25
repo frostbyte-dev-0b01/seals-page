@@ -347,6 +347,25 @@ async function getUserGuessAveragesForGuest({
 		ORDER BY ups.puzzle_date ASC;
 	`;
 
+	const puzzleProgressSql = `
+		SELECT
+			ups.puzzle_id,
+			ups.puzzle_date::text AS puzzle_date,
+			(ups.completed_at IS NOT NULL) AS completed,
+			ups.completed_at::text AS completed_at,
+			ups.first_play_at::text AS first_play_at,
+			ups.first_seen_at::text AS first_seen_at,
+			ups.first_share_at::text AS first_share_at,
+			ups.guesses_on_win,
+			ups.total_words_found,
+			COALESCE(ups.streak_eligible, false) AS streak_eligible
+		FROM user_puzzle_stats ups
+		JOIN principals p ON p.id = ups.principal_id
+		WHERE p.guest_cookie_id = $1::uuid
+		  AND (ups.completed_at IS NOT NULL OR ups.first_play_at IS NOT NULL)
+		ORDER BY ups.puzzle_date ASC, ups.puzzle_id ASC;
+	`;
+
 	const distributionSql = `
 		SELECT
 			CASE
@@ -365,10 +384,11 @@ async function getUserGuessAveragesForGuest({
 	`;
 
 	const db = getPool();
-	const [overallRes, windowRes, seriesRes] = await Promise.all([
+	const [overallRes, windowRes, seriesRes, puzzleProgressRes] = await Promise.all([
 		db.query(overallSql, [guestId]),
 		db.query(windowSql, [guestId, windowDays]),
-		db.query(seriesSql, [guestId, seriesDays])
+		db.query(seriesSql, [guestId, seriesDays]),
+		db.query(puzzleProgressSql, [guestId])
 	]);
 
 	let guess_distribution = {};
@@ -393,6 +413,7 @@ async function getUserGuessAveragesForGuest({
 			avg_words_window: null
 		},
 		series: seriesRes.rows,
+		puzzle_progress: puzzleProgressRes.rows,
 		guess_distribution
 	};
 }
