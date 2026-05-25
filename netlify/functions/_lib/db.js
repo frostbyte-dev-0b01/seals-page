@@ -47,6 +47,7 @@ async function upsertUserPuzzleStats(statsRecord) {
 			guesses_on_win,
 			total_words_found,
 			completed_at,
+			streak_eligible,
 			updated_at
 		)
 		SELECT
@@ -56,6 +57,7 @@ async function upsertUserPuzzleStats(statsRecord) {
 			$4::integer,
 			$5::integer,
 			$6::timestamptz,
+			$7::boolean,
 			NOW()
 		FROM principal
 		ON CONFLICT (principal_id, puzzle_id)
@@ -64,6 +66,7 @@ async function upsertUserPuzzleStats(statsRecord) {
 			guesses_on_win = EXCLUDED.guesses_on_win,
 			total_words_found = EXCLUDED.total_words_found,
 			completed_at = EXCLUDED.completed_at,
+			streak_eligible = user_puzzle_stats.streak_eligible OR EXCLUDED.streak_eligible,
 			first_seen_at = COALESCE(user_puzzle_stats.first_seen_at, EXCLUDED.first_seen_at),
 			first_play_at = COALESCE(user_puzzle_stats.first_play_at, EXCLUDED.first_play_at),
 			first_share_at = COALESCE(user_puzzle_stats.first_share_at, EXCLUDED.first_share_at),
@@ -77,7 +80,8 @@ async function upsertUserPuzzleStats(statsRecord) {
 		statsRecord.puzzle_date,
 		statsRecord.guesses_on_win,
 		statsRecord.total_words_found,
-		statsRecord.completed_at
+		statsRecord.completed_at,
+		statsRecord.streak_eligible === true
 	];
 
 	const { rows } = await getPool().query(sql, params);
@@ -330,6 +334,8 @@ async function getUserGuessAveragesForGuest({
 		SELECT
 			ups.puzzle_date::text AS puzzle_date,
 			COUNT(*)::integer AS games_completed,
+			COUNT(*) FILTER (WHERE COALESCE(ups.streak_eligible, false))::integer
+				AS streak_eligible_games_completed,
 			AVG(ups.guesses_on_win)::numeric(10,2) AS avg_guesses_on_win,
 			AVG(ups.total_words_found)::numeric(10,2) AS avg_total_words_found
 		FROM user_puzzle_stats ups

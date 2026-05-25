@@ -46,6 +46,9 @@ function validateCompletionPayload(payload) {
 	if (!Number.isInteger(payload.total_words_found) || payload.total_words_found < 0) {
 		return "Invalid total_words_found";
 	}
+	if (payload.streak_eligible != null && typeof payload.streak_eligible !== "boolean") {
+		return "Invalid streak_eligible";
+	}
 	return null;
 }
 
@@ -174,7 +177,8 @@ exports.handler = async (event) => {
 			puzzle_date: payload.puzzle_date,
 			guesses_on_win: payload.guesses_on_win,
 			total_words_found: payload.total_words_found,
-			completed_at: new Date().toISOString()
+			completed_at: new Date().toISOString(),
+			streak_eligible: payload.streak_eligible !== false
 		});
 	} catch (err) {
 		console.error("Failed upserting user stats", err);
