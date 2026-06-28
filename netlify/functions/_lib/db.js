@@ -1,4 +1,4 @@
-const { Pool } = require("pg");
+const crypto = require("node:crypto");
 
 let pool;
 
@@ -8,6 +8,9 @@ function getDbUrl() {
 
 function getPool() {
 	if (pool) return pool;
+	// Lazy require so importing this module (e.g. from unit tests that inject a
+	// fake pool via setPoolForTests) does not pull in the native `pg` driver.
+	const { Pool } = require("pg");
 	const connectionString = getDbUrl();
 	if (!connectionString) {
 		throw new Error("Missing NETLIFY_DATABASE_URL (or DATABASE_URL)");
@@ -17,6 +20,16 @@ function getPool() {
 		ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false }
 	});
 	return pool;
+}
+
+// Test-only seam: inject a fake `{ query }` pool so handlers can be exercised
+// without a real database. Not used in production code paths.
+function setPoolForTests(fakePool) {
+	pool = fakePool;
+}
+
+function resetPoolForTests() {
+	pool = undefined;
 }
 
 async function touchGuestPrincipal(guestId) {
@@ -89,6 +102,67 @@ async function upsertUserPuzzleStats(statsRecord) {
 		statsRecord.total_words_found,
 		statsRecord.completed_at,
 		statsRecord.streak_eligible === true
+	];
+
+	const { rows } = await getPool().query(sql, params);
+	return rows[0] || null;
+}
+
+// Cross-device resume (signed-in users only). Stores the in-progress board-state
+// blob on the existing (principal_id, puzzle_id) row. Unlike the other upserts,
+// this one refuses to create or write a *guest* principal: progress only syncs
+// for real accounts, so a guest (or a forged request without an account cookie)
+// is a no-op. The DO UPDATE guards on progress_word_count so a stale device with
+// fewer words can never clobber a more-complete blob; combined with the client's
+// union-on-load this converges both devices. Never touches score/completion cols.
+async function upsertPuzzleProgress({ guest_id, puzzle_id, puzzle_date, progress, word_count }) {
+	const sql = `
+		WITH principal AS (
+			SELECT id FROM principals
+			 WHERE guest_cookie_id = $1::uuid
+			   AND principal_type = 'user'
+			   AND auth_user_id IS NOT NULL
+		)
+		INSERT INTO user_puzzle_stats (
+			principal_id,
+			puzzle_id,
+			puzzle_date,
+			completed_at,
+			progress,
+			progress_word_count,
+			progress_updated_at,
+			updated_at
+		)
+		SELECT
+			id,
+			$2::text,
+			$3::date,
+			NULL,
+			$4::jsonb,
+			$5::integer,
+			NOW(),
+			NOW()
+		FROM principal
+		ON CONFLICT (principal_id, puzzle_id)
+		DO UPDATE SET
+			progress = EXCLUDED.progress,
+			progress_word_count = EXCLUDED.progress_word_count,
+			progress_updated_at = NOW(),
+			updated_at = CASE
+				WHEN user_puzzle_stats.completed_at IS NULL THEN NOW()
+				ELSE user_puzzle_stats.updated_at
+			END
+		WHERE EXCLUDED.progress_word_count
+			>= COALESCE(user_puzzle_stats.progress_word_count, -1)
+		RETURNING principal_id, puzzle_id;
+	`;
+
+	const params = [
+		guest_id,
+		puzzle_id,
+		puzzle_date,
+		JSON.stringify(progress || {}),
+		Number.isInteger(word_count) && word_count >= 0 ? word_count : 0
 	];
 
 	const { rows } = await getPool().query(sql, params);
@@ -309,6 +383,191 @@ async function getUserPuzzleStatsSummary({
 	return { rows, guess_distribution };
 }
 
+// Account creation (#257). Links a verified Google identity to the principal
+// the current device's guest cookie resolves to, returning the guest_cookie_id
+// the device should carry afterward (unchanged for a claim; the account's for a
+// merge). Runs in a transaction so a partial link can never split stats.
+//
+//  - CLAIM (Google sub unseen): upgrade the current guest principal in place —
+//    set auth_user_id/email and principal_type='user'. Same principal_id, zero
+//    row migration; the existing cookie keeps resolving to it.
+//  - MERGE (Google sub already on another principal): fold this device's guest
+//    stats into the existing account principal, resolving (principal_id,
+//    puzzle_id) conflicts in the account's favor under the existing
+//    "first completion wins" rule, then delete the guest principal. The caller
+//    re-issues the device cookie to the account's guest_cookie_id.
+async function linkGoogleAccount({ guestId, authUserId, email }) {
+	const client = await getPool().connect();
+	try {
+		await client.query("BEGIN");
+
+		// Ensure this device has a principal row to work from.
+		await client.query(
+			`INSERT INTO principals (principal_type, guest_cookie_id, last_seen_at)
+			 VALUES ('guest', $1::uuid, NOW())
+			 ON CONFLICT (guest_cookie_id) DO UPDATE SET last_seen_at = NOW()`,
+			[guestId]
+		);
+		const { rows: currentRows } = await client.query(
+			`SELECT id, auth_user_id FROM principals WHERE guest_cookie_id = $1::uuid`,
+			[guestId]
+		);
+		const currentId = currentRows[0].id;
+		const currentAuthUserId = currentRows[0].auth_user_id;
+
+		const { rows: accountRows } = await client.query(
+			`SELECT id, guest_cookie_id FROM principals WHERE auth_user_id = $1`,
+			[authUserId]
+		);
+
+		// CLAIM: no existing account for this identity.
+		if (accountRows.length === 0) {
+			// Guard: if this device's principal is already linked to a *different*
+			// account (the user is signed in as someone else and never signed out),
+			// claiming in place would overwrite — and orphan — that account. Mint a
+			// fresh principal for the new identity instead and point the device cookie
+			// at it, leaving the prior account untouched.
+			if (currentAuthUserId && currentAuthUserId !== authUserId) {
+				const newGuestId = crypto.randomUUID();
+				await client.query(
+					`INSERT INTO principals (principal_type, auth_user_id, email, guest_cookie_id, last_seen_at)
+					 VALUES ('user', $1, $2, $3::uuid, NOW())`,
+					[authUserId, email, newGuestId]
+				);
+				await client.query("COMMIT");
+				return { guestCookieId: newGuestId, merged: false };
+			}
+			await client.query(
+				`UPDATE principals
+				    SET principal_type = 'user', auth_user_id = $2, email = $3, last_seen_at = NOW()
+				  WHERE id = $1`,
+				[currentId, authUserId, email]
+			);
+			await client.query("COMMIT");
+			return { guestCookieId: guestId, merged: false };
+		}
+
+		const account = accountRows[0];
+
+		// Already signed in as this account on this device — just refresh email.
+		if (account.id === currentId) {
+			if (email) {
+				await client.query(`UPDATE principals SET email = $2, last_seen_at = NOW() WHERE id = $1`, [
+					account.id,
+					email
+				]);
+			}
+			await client.query("COMMIT");
+			return { guestCookieId: account.guest_cookie_id, merged: false };
+		}
+
+		// MERGE. Move non-conflicting guest rows wholesale onto the account.
+		await client.query(
+			`UPDATE user_puzzle_stats g
+			    SET principal_id = $2
+			  WHERE g.principal_id = $1
+			    AND NOT EXISTS (
+			        SELECT 1 FROM user_puzzle_stats a
+			         WHERE a.principal_id = $2 AND a.puzzle_id = g.puzzle_id
+			    )`,
+			[currentId, account.id]
+		);
+
+		// For conflicting puzzles, keep the earliest completion (first-completion-
+		// wins) and the earliest activity timestamps. LEAST() ignores NULLs.
+		await client.query(
+			`UPDATE user_puzzle_stats a
+			    SET guesses_on_win = CASE
+			            WHEN g.completed_at IS NOT NULL
+			             AND (a.completed_at IS NULL OR g.completed_at < a.completed_at)
+			            THEN g.guesses_on_win ELSE a.guesses_on_win END,
+			        total_words_found = CASE
+			            WHEN g.completed_at IS NOT NULL
+			             AND (a.completed_at IS NULL OR g.completed_at < a.completed_at)
+			            THEN g.total_words_found ELSE a.total_words_found END,
+			        completed_at = CASE
+			            WHEN g.completed_at IS NOT NULL
+			             AND (a.completed_at IS NULL OR g.completed_at < a.completed_at)
+			            THEN g.completed_at ELSE a.completed_at END,
+			        streak_eligible = COALESCE(a.streak_eligible, false) OR COALESCE(g.streak_eligible, false),
+			        first_seen_at = LEAST(a.first_seen_at, g.first_seen_at),
+			        first_play_at = LEAST(a.first_play_at, g.first_play_at),
+			        first_share_at = LEAST(a.first_share_at, g.first_share_at),
+			        -- Keep the more-complete in-progress blob (more words wins; newer
+			        -- write breaks ties). Guest "wins" only when it has a blob and is
+			        -- strictly ahead, so a completed account row never loses progress.
+			        progress = CASE WHEN (
+			                g.progress IS NOT NULL AND (
+			                    a.progress IS NULL
+			                    OR COALESCE(g.progress_word_count, -1) > COALESCE(a.progress_word_count, -1)
+			                    OR (COALESCE(g.progress_word_count, -1) = COALESCE(a.progress_word_count, -1)
+			                        AND g.progress_updated_at > a.progress_updated_at)
+			                )) THEN g.progress ELSE a.progress END,
+			        progress_word_count = CASE WHEN (
+			                g.progress IS NOT NULL AND (
+			                    a.progress IS NULL
+			                    OR COALESCE(g.progress_word_count, -1) > COALESCE(a.progress_word_count, -1)
+			                    OR (COALESCE(g.progress_word_count, -1) = COALESCE(a.progress_word_count, -1)
+			                        AND g.progress_updated_at > a.progress_updated_at)
+			                )) THEN g.progress_word_count ELSE a.progress_word_count END,
+			        progress_updated_at = CASE WHEN (
+			                g.progress IS NOT NULL AND (
+			                    a.progress IS NULL
+			                    OR COALESCE(g.progress_word_count, -1) > COALESCE(a.progress_word_count, -1)
+			                    OR (COALESCE(g.progress_word_count, -1) = COALESCE(a.progress_word_count, -1)
+			                        AND g.progress_updated_at > a.progress_updated_at)
+			                )) THEN g.progress_updated_at ELSE a.progress_updated_at END,
+			        updated_at = NOW()
+			   FROM user_puzzle_stats g
+			  WHERE a.principal_id = $2 AND g.principal_id = $1 AND a.puzzle_id = g.puzzle_id`,
+			[currentId, account.id]
+		);
+
+		// Drop the now-merged guest rows and the guest principal itself.
+		await client.query(`DELETE FROM user_puzzle_stats WHERE principal_id = $1`, [currentId]);
+		await client.query(`DELETE FROM principals WHERE id = $1`, [currentId]);
+
+		if (email) {
+			await client.query(`UPDATE principals SET email = $2, last_seen_at = NOW() WHERE id = $1`, [
+				account.id,
+				email
+			]);
+		}
+
+		await client.query("COMMIT");
+		return { guestCookieId: account.guest_cookie_id, merged: true };
+	} catch (err) {
+		try {
+			await client.query("ROLLBACK");
+		} catch (_rollbackErr) {
+			// ignore rollback failures; surface the original error
+		}
+		throw err;
+	} finally {
+		client.release();
+	}
+}
+
+// Stable, opaque per-account tag derived from the immutable `auth_user_id`
+// (`google:<sub>`). Surfaced to the client so the web shell can stamp localStorage
+// saves with their owning account and avoid merging one account's local progress
+// into another on a shared browser. Hashed so the raw Google subject never lands
+// in localStorage; deterministic so auth-me and auth-google produce the same tag.
+function accountTag(authUserId) {
+	if (!authUserId || typeof authUserId !== "string") return null;
+	return crypto.createHash("sha256").update(authUserId).digest("hex").slice(0, 24);
+}
+
+// Account creation (#257). Returns the principal the device's guest cookie
+// resolves to, so auth-me can report whether the visitor is signed in.
+async function getAccountForGuest(guestId) {
+	const { rows } = await getPool().query(
+		`SELECT principal_type, auth_user_id, email FROM principals WHERE guest_cookie_id = $1::uuid`,
+		[guestId]
+	);
+	return rows[0] || null;
+}
+
 async function getUserGuessAveragesForGuest({
 	guestId,
 	windowDays = 30,
@@ -365,11 +624,21 @@ async function getUserGuessAveragesForGuest({
 			ups.first_share_at::text AS first_share_at,
 			ups.guesses_on_win,
 			ups.total_words_found,
-			COALESCE(ups.streak_eligible, false) AS streak_eligible
+			COALESCE(ups.streak_eligible, false) AS streak_eligible,
+			-- The resume blob is the canonical board for the active puzzle, including
+			-- completed ones (so switching accounts and back reconstructs a finished
+			-- board). Bound the payload: in-progress rows always carry the blob, and
+			-- completed rows only while recently active (older archive rows fall back to
+			-- the completed flag alone, which the client treats as canonical).
+			CASE
+				WHEN ups.completed_at IS NULL THEN ups.progress
+				WHEN ups.progress_updated_at >= (NOW() - INTERVAL '45 days') THEN ups.progress
+				ELSE NULL
+			END AS progress
 		FROM user_puzzle_stats ups
 		JOIN principals p ON p.id = ups.principal_id
 		WHERE p.guest_cookie_id = $1::uuid
-		  AND (ups.completed_at IS NOT NULL OR ups.first_play_at IS NOT NULL)
+		  AND (ups.completed_at IS NOT NULL OR ups.first_play_at IS NOT NULL OR ups.progress IS NOT NULL)
 		ORDER BY ups.puzzle_date ASC, ups.puzzle_id ASC;
 	`;
 
@@ -426,10 +695,16 @@ async function getUserGuessAveragesForGuest({
 }
 
 module.exports = {
+	accountTag,
+	getAccountForGuest,
 	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
+	linkGoogleAccount,
 	touchGuestPrincipal,
 	upsertActivityTimestamp,
 	upsertLoadPerfEvent,
-	upsertUserPuzzleStats
+	upsertPuzzleProgress,
+	upsertUserPuzzleStats,
+	setPoolForTests,
+	resetPoolForTests
 };

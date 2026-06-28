@@ -1,8 +1,14 @@
 const { readGuestCookie } = require("./_lib/cookie");
-const { upsertActivityTimestamp, upsertLoadPerfEvent, upsertUserPuzzleStats } = require("./_lib/db");
+const {
+	upsertActivityTimestamp,
+	upsertLoadPerfEvent,
+	upsertPuzzleProgress,
+	upsertUserPuzzleStats
+} = require("./_lib/db");
 
 const ACTIVITY_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
 const MAX_LOAD_PERF_JSON_BYTES = 24000;
+const MAX_PROGRESS_JSON_BYTES = 24000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function json(statusCode, body) {
@@ -67,6 +73,26 @@ function byteLength(value) {
 	return Buffer.byteLength(JSON.stringify(value || null), "utf8");
 }
 
+function validateProgressPayload(payload) {
+	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
+	if (typeof payload.puzzle_id !== "string" || payload.puzzle_id.trim() === "") {
+		return "Invalid puzzle_id";
+	}
+	if (typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date)) {
+		return "Invalid puzzle_date (expected YYYY-MM-DD)";
+	}
+	if (!payload.progress || typeof payload.progress !== "object" || Array.isArray(payload.progress)) {
+		return "Invalid progress";
+	}
+	if (payload.word_count != null && (!Number.isInteger(payload.word_count) || payload.word_count < 0)) {
+		return "Invalid word_count";
+	}
+	if (byteLength(payload.progress) > MAX_PROGRESS_JSON_BYTES) {
+		return "Progress payload too large";
+	}
+	return null;
+}
+
 function validateLoadPerfPayload(payload) {
 	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
 	if (typeof payload.session_load_id !== "string" || !UUID_RE.test(payload.session_load_id)) {
@@ -116,7 +142,13 @@ exports.handler = async (event) => {
 
 	const eventType = payload.event_type;
 
-	if (eventType && !ACTIVITY_EVENT_TYPES.includes(eventType) && eventType !== "completion" && eventType !== "load_perf") {
+	if (
+		eventType &&
+		!ACTIVITY_EVENT_TYPES.includes(eventType) &&
+		eventType !== "completion" &&
+		eventType !== "load_perf" &&
+		eventType !== "progress"
+	) {
 		return json(400, { ok: false, error: "Unknown event_type" });
 	}
 
@@ -142,6 +174,28 @@ exports.handler = async (event) => {
 		} catch (err) {
 			console.error("Failed upserting load performance event", err);
 			return json(500, { ok: false, error: "Failed to persist load performance event" });
+		}
+		return json(200, { ok: true });
+	}
+
+	if (eventType === "progress") {
+		const validationError = validateProgressPayload(payload);
+		if (validationError) {
+			return json(400, { ok: false, error: validationError });
+		}
+		try {
+			// No-op for guests / unauthenticated cookies: upsertPuzzleProgress only
+			// writes when the cookie resolves to a signed-in ('user') principal.
+			await upsertPuzzleProgress({
+				guest_id: guestId,
+				puzzle_id: payload.puzzle_id.trim(),
+				puzzle_date: payload.puzzle_date,
+				progress: payload.progress,
+				word_count: Number.isInteger(payload.word_count) ? payload.word_count : 0
+			});
+		} catch (err) {
+			console.error("Failed upserting puzzle progress", err);
+			return json(500, { ok: false, error: "Failed to persist puzzle progress" });
 		}
 		return json(200, { ok: true });
 	}

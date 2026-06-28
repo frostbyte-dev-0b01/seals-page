@@ -243,7 +243,7 @@ body {
 	z-index: 1;
 }
 
-#whats-new {
+#splash-info {
 	position: fixed;
 	top: 28px;
 	left: 10px;
@@ -251,10 +251,16 @@ body {
 	max-width: min(78vw, 320px);
 	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
 	color: #5b3943;
+	z-index: 1000;
+	transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+#whats-new {
+	width: auto;
+	max-width: min(78vw, 320px);
 	opacity: 0;
 	transform: translateY(4px);
 	transition: opacity 0.5s ease, transform 0.5s ease;
-	z-index: 1000;
 }
 
 #whats-new.is-visible {
@@ -419,11 +425,13 @@ body {
 	outline-offset: 3px;
 }
 
-#first-play-modal[hidden] {
+#first-play-modal[hidden],
+#privacy-modal[hidden] {
 	display: none;
 }
 
-#first-play-modal {
+#first-play-modal,
+#privacy-modal {
 	position: fixed;
 	inset: 0;
 	z-index: 1200;
@@ -439,17 +447,20 @@ body {
 	transition: opacity 0.18s ease;
 }
 
-#first-play-modal.is-open {
+#first-play-modal.is-open,
+#privacy-modal.is-open {
 	opacity: 1;
 	pointer-events: auto;
 }
 
-#first-play-modal.is-closing {
+#first-play-modal.is-closing,
+#privacy-modal.is-closing {
 	opacity: 0;
 	pointer-events: none;
 }
 
-#first-play-card {
+#first-play-card,
+#privacy-card {
 	width: min(88vw, 460px);
 	padding: 1.65rem 1.5rem 1.4rem;
 	box-sizing: border-box;
@@ -470,12 +481,26 @@ body {
 		opacity 0.2s ease;
 }
 
-#first-play-modal.is-open #first-play-card {
+#privacy-card {
+	width: min(90vw, 520px);
+	max-height: min(82vh, 620px);
+	overflow-y: auto;
+	text-align: left;
+}
+
+#privacy-card h2 {
+	font-size: 1.65rem;
+	letter-spacing: 0;
+}
+
+#first-play-modal.is-open #first-play-card,
+#privacy-modal.is-open #privacy-card {
 	opacity: 1;
 	transform: scale(1) translateY(0);
 }
 
-#first-play-modal.is-closing #first-play-card {
+#first-play-modal.is-closing #first-play-card,
+#privacy-modal.is-closing #privacy-card {
 	opacity: 0;
 	transform: scale(0.94) translateY(4px);
 	transition:
@@ -483,18 +508,74 @@ body {
 		opacity 0.15s ease;
 }
 
-#first-play-card h2 {
+#first-play-card h2,
+#privacy-card h2 {
 	margin: 0 0 0.45rem;
 	font-size: clamp(1.6rem, 4vw, 2.15rem);
 	line-height: 1.1;
 	letter-spacing: -0.02em;
 }
 
-#first-play-card p {
+#first-play-card p,
+#privacy-card p {
 	margin: 0 0 1.15rem;
 	font-size: clamp(1rem, 2.9vw, 1.18rem);
 	line-height: 1.45;
 	color: #5d5146;
+}
+
+#privacy-card p {
+	font-size: 0.95rem;
+	margin-bottom: 0.85rem;
+}
+
+#privacy-card ul {
+	margin: 0 0 1rem 1.1rem;
+	padding: 0;
+	color: #5d5146;
+	font-size: 0.94rem;
+	line-height: 1.45;
+}
+
+#privacy-card li {
+	margin-bottom: 0.45rem;
+}
+
+#privacy-card a {
+	color: #6d4652;
+	font-weight: 700;
+}
+
+#privacy-close {
+	display: block;
+	width: 100%;
+	min-height: 48px;
+	margin-top: 0.35rem;
+	padding: 0.72rem 1rem;
+	box-sizing: border-box;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	font-size: 0.98rem;
+	font-weight: 700;
+	border: 1px solid rgba(115, 89, 64, 0.16);
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.72);
+	color: #5b3943;
+	cursor: pointer;
+	transition: transform 0.18s ease, background 0.18s ease;
+}
+
+#privacy-close:hover {
+	background: rgba(255, 255, 255, 0.9);
+	transform: translateY(-1px);
+}
+
+#privacy-close:active {
+	transform: translateY(1px);
+}
+
+#privacy-close:focus-visible {
+	outline: 3px solid rgba(245, 168, 91, 0.45);
+	outline-offset: 3px;
 }
 
 #first-play-actions {
@@ -583,6 +664,140 @@ body {
 	min-height: 1.6em;
 }
 
+/* Account sign-in (#257) — quiet chip treatment matching the splash palette.
+   The signed-out button is rendered by GIS (pill shape); we only frame it.
+   The signed-in chip is fully our own markup, so it's fully styled here. */
+#account-row {
+	display: flex;
+	justify-content: center;
+	margin-top: 0.85rem;
+	min-height: 40px;
+}
+
+#google-signin-button {
+	display: inline-flex;
+	/* GIS renders a fixed-size iframe button; center it and let the pill
+	   shape (set in renderButton opts) carry the rounded splash idiom. */
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+#account-signed-in {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 5px 7px 5px 5px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.82);
+	border: 1px solid rgba(115, 89, 64, 0.18);
+	box-shadow: 0 4px 14px rgba(43, 36, 30, 0.07);
+	max-width: 100%;
+}
+
+/* #google-signin-button and #account-signed-in are flex items of #account-row,
+   so their ID-level `display` blockifies them and outranks the UA `[hidden]`
+   rule — leaving both visible and breaking the signed-in/out swap. Re-assert
+   hiding with an id+attribute selector that outranks those ID rules so the
+   `.hidden` toggle shows exactly one at a time (#257). */
+#google-signin-button[hidden],
+#account-signed-in[hidden] {
+	display: none;
+}
+
+#account-avatar {
+	flex: 0 0 auto;
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-weight: 700;
+	font-size: 0.82rem;
+	line-height: 1;
+	text-transform: uppercase;
+	background: linear-gradient(135deg, #f7af68 0%, #f09d4f 100%);
+	box-shadow: 0 2px 6px rgba(199, 128, 60, 0.35);
+}
+
+#account-who {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.15;
+	text-align: left;
+	min-width: 0;
+}
+
+#account-who-label {
+	font-size: 0.62rem;
+	letter-spacing: 0.02em;
+	color: #8e6671;
+}
+
+#account-status {
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: #5b3943;
+	max-width: 168px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#account-signout {
+	flex: 0 0 auto;
+	margin-left: 0.1rem;
+	padding: 4px 7px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	font-size: 0.72rem;
+	color: #8e6671;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition: color 0.18s ease;
+}
+
+#account-signout:hover {
+	color: #5b3943;
+}
+
+#account-signout:focus-visible {
+	outline: 2px solid rgba(245, 168, 91, 0.45);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+#privacy-link-row {
+	margin-top: 0.35rem;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	font-size: 0.68rem;
+	color: #8d8178;
+}
+
+#privacy-link {
+	padding: 3px 5px;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+
+#privacy-link:hover {
+	color: #5b3943;
+}
+
+#privacy-link:focus-visible {
+	outline: 2px solid rgba(245, 168, 91, 0.45);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
 #version-number {
 	position: fixed;
 	top: 8px;
@@ -623,13 +838,19 @@ body {
 }
 
 body.is-launching-game #whats-new,
+body.is-launching-game #splash-info,
 body.is-launching-game #version-number {
 	opacity: 0;
 	transform: translateY(-6px);
+	pointer-events: none;
 }
 
 @media (max-width: 520px) {
 	#whats-new {
+		max-width: min(84vw, 280px);
+	}
+
+	#splash-info {
 		max-width: min(84vw, 280px);
 	}
 
@@ -640,6 +861,12 @@ body.is-launching-game #version-number {
 	#first-play-card {
 		width: min(92vw, 400px);
 		padding: 1.4rem 1.1rem 1.15rem;
+		border-radius: 16px;
+	}
+
+	#privacy-card {
+		width: min(92vw, 430px);
+		padding: 1.35rem 1.1rem 1.1rem;
 		border-radius: 16px;
 	}
 
@@ -729,12 +956,12 @@ body.is-launching-game #version-number {
 	}
 }
 		</style>
-		<link rel="preload" as="fetch" type="application/wasm" crossorigin="anonymous" fetchpriority="high" href="index-1.2.2-f404c4e.wasm">
-		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="high" href="index-1.2.2-f404c4e.pck">
-		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="low" href="index-1.2.2-f404c4e.puzzles.json">
-<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-1.2.2-f404c4e.icon.png" />
-<link rel="apple-touch-icon" href="index-1.2.2-f404c4e.apple-touch-icon.png"/>
-<link rel="manifest" href="index-1.2.2-f404c4e.manifest.json">
+		<link rel="preload" as="fetch" type="application/wasm" crossorigin="anonymous" fetchpriority="high" href="index-1.3.0-2b8dccd.wasm">
+		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="high" href="index-1.3.0-2b8dccd.pck">
+		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="low" href="index-1.3.0-2b8dccd.puzzles.json">
+<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-1.3.0-2b8dccd.icon.png" />
+<link rel="apple-touch-icon" href="index-1.3.0-2b8dccd.apple-touch-icon.png"/>
+<link rel="manifest" href="index-1.3.0-2b8dccd.manifest.json">
 	</head>
 	<body>
 		<div id="orientation-warning">
@@ -742,7 +969,7 @@ body.is-launching-game #version-number {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v1.2.2</div>
+		<div id="version-number">v1.3.0</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -821,8 +1048,23 @@ body.is-launching-game #version-number {
 					<div id="puzzle-info-date"></div>
 					<div>Email: dailyrunesgame@gmail.com</div>
 				</div>
+				<!-- Account sign-in (#257). Hidden until GOOGLE_CLIENT_ID is configured
+				     in the account module below. Signed-out renders the GIS pill button
+				     into #google-signin-button; signed-in swaps in the custom avatar chip. -->
+				<div id="account-row" hidden>
+					<div id="google-signin-button"></div>
+					<div id="account-signed-in" hidden>
+						<span id="account-avatar" aria-hidden="true"></span>
+						<span id="account-who">
+							<span id="account-who-label">Signed in</span>
+							<span id="account-status"></span>
+						</span>
+						<button id="account-signout" type="button">Sign out</button>
+					</div>
+				</div>
 			</div>
 		</div>
+		<div id="splash-info">
 		<section id="whats-new" hidden aria-label="What's new">
 			<button
 				id="whats-new-toggle"
@@ -841,6 +1083,10 @@ body.is-launching-game #version-number {
 				<ul id="whats-new-list"></ul>
 			</div>
 		</section>
+		<div id="privacy-link-row">
+			<button id="privacy-link" type="button" aria-haspopup="dialog" aria-controls="privacy-modal">Privacy</button>
+		</div>
+		</div>
 		<div id="first-play-modal" hidden role="dialog" aria-modal="true" aria-labelledby="first-play-title" aria-describedby="first-play-copy">
 			<div id="first-play-card">
 				<h2 id="first-play-title">New to Runes?</h2>
@@ -849,6 +1095,22 @@ body.is-launching-game #version-number {
 					<button id="first-play-tutorial" class="first-play-choice primary" type="button">Start Tutorial</button>
 					<button id="first-play-puzzle" class="first-play-choice secondary" type="button">Play Today's Puzzle</button>
 				</div>
+			</div>
+		</div>
+		<div id="privacy-modal" hidden role="dialog" aria-modal="true" aria-labelledby="privacy-title" aria-describedby="privacy-copy">
+			<div id="privacy-card">
+				<h2 id="privacy-title">Privacy</h2>
+				<p id="privacy-copy">Runes only uses account information to keep your puzzle progress connected to you.</p>
+				<ul>
+					<li>If you sign in with Google, we receive your Google account identifier and verified email address.</li>
+					<li>We store that account information with your puzzle progress, stats, and basic play activity so your history can follow you across devices.</li>
+					<li>We also collect technical loading details, such as app version, page path, browser, and asset timing, to keep the game running well.</li>
+					<li>We do not sell your email, Google account data, or puzzle history.</li>
+					<li>Service providers that host or operate the game may process this data for us.</li>
+					<li>You can play without signing in. To ask for account deletion or data questions, email <a href="mailto:dailyrunesgame@gmail.com">dailyrunesgame@gmail.com</a>.</li>
+				</ul>
+				<p>Last updated June 28, 2026.</p>
+				<button id="privacy-close" type="button">Close</button>
 			</div>
 		</div>
 
@@ -888,7 +1150,7 @@ body.is-launching-game #version-number {
 	}
 })();
 		</script>
-		<script src="index-1.2.2-f404c4e.js"></script>
+		<script src="index-1.3.0-2b8dccd.js"></script>
 		<script>
 function todayIsoDate() {
 	const now = new Date();
@@ -1019,6 +1281,79 @@ function todayIsoDate() {
 			body: JSON.stringify(payload)
 		});
 	}
+
+	// Cross-device resume (signed-in only): mirror the local save to the DB so the
+	// player can pick the same puzzle up mid-solve on another device. localStorage
+	// stays authoritative locally; this is a best-effort async backup. Gated on the
+	// signed-in flag set by the account code (window.SealsAccount); the server also
+	// no-ops the write for any non-account cookie, so this is defence in depth.
+	const PROGRESS_SYNC_DEBOUNCE_MS = 2500;
+	const MAX_PROGRESS_JSON_BYTES = 24000;
+	let _progressSyncTimer = null;
+	let _pendingProgressState = null;
+
+	function isSignedIn() {
+		return !!(window.SealsAccount && window.SealsAccount.signedIn);
+	}
+
+	function buildProgressPayload(stateObj) {
+		const puzzleId = resolvePuzzleId(stateObj);
+		if (!puzzleId) return null;
+		// Cheap guard against runaway blobs; the server enforces the real byte cap.
+		try {
+			if (JSON.stringify(stateObj).length > MAX_PROGRESS_JSON_BYTES) return null;
+		} catch (_err) {
+			return null;
+		}
+		return {
+			event_type: 'progress',
+			puzzle_id: puzzleId,
+			puzzle_date: resolvePuzzleDate(stateObj),
+			progress: stateObj,
+			word_count: getTotalWordsFound(stateObj)
+		};
+	}
+
+	function flushProgressSync(sync) {
+		if (_progressSyncTimer) {
+			clearTimeout(_progressSyncTimer);
+			_progressSyncTimer = null;
+		}
+		const stateObj = _pendingProgressState;
+		_pendingProgressState = null;
+		if (!stateObj || !isSignedIn()) return;
+		const payload = buildProgressPayload(stateObj);
+		if (!payload) return;
+
+		if (sync) {
+			try {
+				const body = JSON.stringify(payload);
+				if (navigator.sendBeacon) {
+					const blob = new Blob([body], { type: 'application/json' });
+					if (navigator.sendBeacon('/.netlify/functions/stats-event', blob)) return;
+				}
+			} catch (_err) {}
+			return;
+		}
+
+		ensureGuestSession()
+			.then(function () { return upsertUserStats(payload); })
+			.catch(function (err) { console.warn('progress sync failed:', err); });
+	}
+
+	// Called from savePuzzleState on every save (which fires per word / per guess),
+	// so debounce to coalesce a burst into one POST a couple seconds after activity.
+	function syncPuzzleProgress(stateObj) {
+		if (!isSignedIn() || !resolvePuzzleId(stateObj)) return;
+		_pendingProgressState = stateObj;
+		if (_progressSyncTimer) clearTimeout(_progressSyncTimer);
+		_progressSyncTimer = setTimeout(function () { flushProgressSync(false); }, PROGRESS_SYNC_DEBOUNCE_MS);
+	}
+
+	// A mid-solve tab close shouldn't lose the last few words: flush synchronously.
+	window.addEventListener('pagehide', function () {
+		if (_pendingProgressState) flushProgressSync(true);
+	});
 
 	function roundedMs(value) {
 		return Number.isFinite(value) ? Math.round(value) : null;
@@ -1204,10 +1539,18 @@ function todayIsoDate() {
 			streak_eligible: streakEligible
 		};
 
+		// Track the in-flight completion write so GDScript can wait for it to
+		// settle before reading personal stats back (avoids the win screen
+		// fetching stats-me before this completion has been committed).
+		const completion = window._completion || (window._completion = { pending: 0 });
+		completion.pending += 1;
 		ensureGuestSession()
 			.then(() => upsertUserStats(payload))
 			.catch((err) => {
 				console.warn('user stats tracking failed:', err);
+			})
+			.finally(() => {
+				completion.pending = Math.max(0, completion.pending - 1);
 			});
 	}
 
@@ -1219,6 +1562,7 @@ function todayIsoDate() {
 				localStorage.setItem(SAVE_KEY, serialized);
 			}
 			markCompletedAndSendIfNeeded(stateObj);
+			syncPuzzleProgress(stateObj);
 			return true;
 		} catch (e) {
 			console.error('Failed to save game state:', e);
@@ -1366,13 +1710,13 @@ function todayIsoDate() {
 })();
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index-1.2.2-f404c4e","experimentalVK":false,"fileSizes":{"index-1.2.2-f404c4e.pck":3466756,"index-1.2.2-f404c4e.wasm":24673935},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-1.2.2-f404c4e.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index-1.3.0-2b8dccd","experimentalVK":false,"fileSizes":{"index-1.3.0-2b8dccd.pck":3581620,"index-1.3.0-2b8dccd.wasm":24673935},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-1.3.0-2b8dccd.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 const WHATS_NEW_STORAGE_KEY = '3seals_last_seen_whats_new_version';
-const WHATS_NEW_URL = 'index-1.2.2-f404c4e.whats-new.json';
-const PUZZLES_MANIFEST_URL = 'index-1.2.2-f404c4e.puzzles.json';
-const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
+const WHATS_NEW_URL = 'index-1.3.0-2b8dccd.whats-new.json';
+const PUZZLES_MANIFEST_URL = 'index-1.3.0-2b8dccd.puzzles.json';
+const GOOGLE_TAG_ID = 'G-XCPBX6R16Q';
 	const FIRST_PLAY_MODAL_OPEN_DELAY_MS = 45;
 	const FIRST_PLAY_MODAL_CLOSE_MS = 220;
 	const MOBILE_NON_CRITICAL_DELAY_MS = 1200;
@@ -1399,11 +1743,14 @@ const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
 	const firstPlayModal = document.getElementById('first-play-modal');
 	const firstPlayTutorial = document.getElementById('first-play-tutorial');
 	const firstPlayPuzzle = document.getElementById('first-play-puzzle');
+	const privacyLink = document.getElementById('privacy-link');
+	const privacyModal = document.getElementById('privacy-modal');
+	const privacyClose = document.getElementById('privacy-close');
 
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '1.2.2';
+	let currentVersion = '1.3.0';
 	window._appVersion = currentVersion;
 	let whatsNewData = null;
 	let launchStarted = false;
@@ -1417,6 +1764,7 @@ const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
 	let playButtonShown = false;
 	let firstPlayShowTimer = 0;
 	let firstPlayHideTimer = 0;
+	let privacyHideTimer = 0;
 	let whatsNewLoadStarted = false;
 	let guestSessionWarmupStarted = false;
 	let googleTagLoadStarted = false;
@@ -1872,6 +2220,33 @@ const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
 		}
 	}
 
+	function showPrivacyModal() {
+		if (!privacyModal) return;
+		window.clearTimeout(privacyHideTimer);
+		privacyModal.classList.remove('is-open');
+		privacyModal.classList.remove('is-closing');
+		privacyModal.hidden = false;
+		window.setTimeout(() => {
+			if (!privacyModal || privacyModal.hidden) return;
+			privacyModal.classList.add('is-open');
+		}, FIRST_PLAY_MODAL_OPEN_DELAY_MS);
+		window.setTimeout(() => {
+			if (privacyClose) privacyClose.focus();
+		}, 0);
+	}
+
+	function hidePrivacyModal() {
+		if (!privacyModal || privacyModal.hidden) return;
+		window.clearTimeout(privacyHideTimer);
+		privacyModal.classList.remove('is-open');
+		privacyModal.classList.add('is-closing');
+		privacyHideTimer = window.setTimeout(() => {
+			privacyModal.hidden = true;
+			privacyModal.classList.remove('is-closing');
+			if (privacyLink) privacyLink.focus();
+		}, FIRST_PLAY_MODAL_CLOSE_MS);
+	}
+
 	function launchDailyPuzzle() {
 		window.sendActivityEvent('first_play');
 		startGame();
@@ -1901,7 +2276,28 @@ const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
 		firstPlayPuzzle.addEventListener('click', launchDailyPuzzle);
 	}
 
+	if (privacyLink) {
+		privacyLink.addEventListener('click', showPrivacyModal);
+	}
+
+	if (privacyClose) {
+		privacyClose.addEventListener('click', hidePrivacyModal);
+	}
+
+	if (privacyModal) {
+		privacyModal.addEventListener('click', function (event) {
+			if (event.target === privacyModal) {
+				hidePrivacyModal();
+			}
+		});
+	}
+
 	document.addEventListener('keydown', function (event) {
+		if (privacyModal && !privacyModal.hidden && event.key === 'Escape') {
+			event.preventDefault();
+			hidePrivacyModal();
+			return;
+		}
 		if (!firstPlayModal || firstPlayModal.hidden) return;
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -2156,6 +2552,135 @@ const GOOGLE_TAG_ID = 'G-LSBKZDMNBG';
 
 }());
 		</script>
+		<!-- Account creation (#257), Option A: Google sign-in. Dormant until
+		     GOOGLE_CLIENT_ID below is set to the OAuth "Web application" client id
+		     (also set GOOGLE_CLIENT_ID in the Netlify env for the auth-google fn).
+		     With no client id this renders nothing and changes no current behavior. -->
+		<script>
+(function () {
+	// Google OAuth Web client id (#257). Public, not a secret. The matching
+	// GOOGLE_CLIENT_ID must also be set in the Netlify env for the auth-google fn.
+	var GOOGLE_CLIENT_ID = '782985401650-qa9o9ib5tptauj2rtdevf0c1oo1v3vnr.apps.googleusercontent.com';
+	if (!GOOGLE_CLIENT_ID) return;
+
+	// Signed-in state, read by the progress-sync bridge (syncPuzzleProgress) to
+	// decide whether to mirror local saves to the DB. Defaults to signed-out until
+	// auth-me / sign-in resolves; all account transitions funnel through the two
+	// helpers below, so this stays in sync with the visible account UI.
+	window.SealsAccount = window.SealsAccount || { signedIn: false, email: null, accountId: null };
+
+	function showSignedIn(email, accountId) {
+		// accountId is a stable opaque per-account tag (auth-me / auth-google). The
+		// engine stamps localStorage saves with it so one account's local progress is
+		// never merged into another account's session on a shared browser.
+		window.SealsAccount = { signedIn: true, email: email || null, accountId: accountId || null };
+		// The engine boots on page load — before the Play button and before sign-in —
+		// so its initial cross-device resume runs while still a guest and is skipped.
+		// Now that the account cookie is in place, re-trigger the in-engine sync so a
+		// fresh device / private window resumes the in-progress puzzle without a reload.
+		if (window.SealsReloadProgress) window.SealsReloadProgress();
+		var btn = document.getElementById('google-signin-button');
+		var signedIn = document.getElementById('account-signed-in');
+		var status = document.getElementById('account-status');
+		var avatar = document.getElementById('account-avatar');
+		if (btn) btn.hidden = true;
+		// Avatar monogram: first letter of the email (fallback to a rune-y mark).
+		if (avatar) {
+			var initial = email && email.trim() ? email.trim().charAt(0) : '✦';
+			avatar.textContent = initial;
+		}
+		// The "Signed in" label is static markup; #account-status carries the email
+		// (or a neutral fallback when the address is unavailable).
+		if (status) status.textContent = email ? email : 'your account';
+		if (signedIn) signedIn.hidden = false;
+	}
+
+	function showSignedOut() {
+		window.SealsAccount = { signedIn: false, email: null, accountId: null };
+		var btn = document.getElementById('google-signin-button');
+		var signedIn = document.getElementById('account-signed-in');
+		if (signedIn) signedIn.hidden = true;
+		if (btn) btn.hidden = false;
+	}
+
+	// Sign out re-points the device cookie at a fresh anonymous guest, then
+	// restores the sign-in button. The account itself is untouched server-side.
+	function signOut() {
+		// Record an explicit sign-out with GIS so it won't auto-select / One Tap
+		// the same account back in on the next load.
+		if (window.google && google.accounts && google.accounts.id) {
+			google.accounts.id.disableAutoSelect();
+		}
+		fetch('/.netlify/functions/auth-logout', {
+			method: 'POST',
+			credentials: 'include',
+			cache: 'no-store'
+		}).then(showSignedOut, showSignedOut);
+	}
+
+	// GIS hands us a one-time ID token (response.credential). Ensure the guest
+	// session cookie exists first so auth-google can claim/merge that principal,
+	// then POST the token for server-side verification + linking.
+	window.handleGoogleCredential = function (response) {
+		if (!response || !response.credential) return;
+		var send = function () {
+			fetch('/.netlify/functions/auth-google', {
+				method: 'POST',
+				credentials: 'include',
+				cache: 'no-store',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ credential: response.credential })
+			})
+				.then(function (r) { return r.ok ? r.json() : null; })
+				.then(function (data) { if (data && data.ok) showSignedIn(data.email, data.account_id); })
+				.catch(function () {});
+		};
+		var ready = window.ensureGuestSession ? window.ensureGuestSession() : Promise.resolve();
+		ready.then(send, send);
+	};
+
+	function initGoogleSignIn() {
+		if (!window.google || !google.accounts || !google.accounts.id) return;
+		google.accounts.id.initialize({
+			client_id: GOOGLE_CLIENT_ID,
+			callback: window.handleGoogleCredential
+		});
+		var row = document.getElementById('account-row');
+		var btn = document.getElementById('google-signin-button');
+		if (row) row.hidden = false;
+		if (btn) {
+			google.accounts.id.renderButton(btn, {
+				theme: 'outline',
+				size: 'large',
+				type: 'standard',
+				shape: 'pill',
+				text: 'signin_with',
+				logo_alignment: 'left'
+			});
+		}
+		var signoutBtn = document.getElementById('account-signout');
+		if (signoutBtn && !signoutBtn._wired) {
+			signoutBtn._wired = true;
+			signoutBtn.addEventListener('click', signOut);
+		}
+
+		// Recognize a returning signed-in user (cookie already maps to an account)
+		// so the signed-in state + Sign out show on reload, not just post-click.
+		fetch('/.netlify/functions/auth-me', { credentials: 'include', cache: 'no-store' })
+			.then(function (r) { return r.ok ? r.json() : null; })
+			.then(function (data) { if (data && data.ok && data.signed_in) showSignedIn(data.email, data.account_id); })
+			.catch(function () {});
+	}
+
+	// GIS calls this when its library finishes loading; also handle the case
+	// where the library is already present by the time this runs.
+	window.onGoogleLibraryLoad = initGoogleSignIn;
+	if (window.google && google.accounts && google.accounts.id) {
+		initGoogleSignIn();
+	}
+})();
+		</script>
+		<script src="https://accounts.google.com/gsi/client" async></script>
 	</body>
 </html>
 
