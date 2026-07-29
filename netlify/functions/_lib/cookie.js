@@ -46,7 +46,13 @@ function readGuestCookie(cookieHeader, secret) {
 	const [payload, sig] = raw.split(".", 2);
 	const expected = signValue(payload, secret);
 
-	if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+	// timingSafeEqual throws if the buffers differ in length, so a tampered or
+	// legacy cookie with a wrong-length signature must be rejected up front —
+	// otherwise the throw escapes to the (un-try/caught) callers as a 500.
+	const sigBuf = Buffer.from(sig);
+	const expectedBuf = Buffer.from(expected);
+	if (sigBuf.length !== expectedBuf.length) return null;
+	if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
 
 	let decoded;
 	try {
