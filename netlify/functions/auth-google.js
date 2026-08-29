@@ -11,9 +11,9 @@ function json(statusCode, body, headers = {}) {
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
 			"Cache-Control": "no-store",
-			...headers
+			...headers,
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
 	};
 }
 
@@ -107,7 +107,7 @@ exports.handler = async (event) => {
 		result = await linkGoogleAccount({
 			guestId,
 			authUserId: identity.authUserId,
-			email: identity.email
+			email: identity.email,
 		});
 	} catch (err) {
 		console.error("Failed linking Google account", err);
@@ -121,9 +121,9 @@ exports.handler = async (event) => {
 			ok: true,
 			email: identity.email,
 			account_id: accountTag(identity.authUserId),
-			merged: result.merged
+			merged: result.merged,
 		},
-		{ "Set-Cookie": setCookie }
+		{ "Set-Cookie": setCookie },
 	);
 };
 

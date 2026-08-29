@@ -7,9 +7,9 @@ function json(statusCode, body, headers = {}) {
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
 			"Cache-Control": "no-store",
-			...headers
+			...headers,
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
 	};
 }
 
@@ -45,6 +45,6 @@ exports.handler = async (event) => {
 		ok: true,
 		signed_in: signedIn,
 		email: signedIn ? row.email : null,
-		account_id: signedIn ? accountTag(row.auth_user_id) : null
+		account_id: signedIn ? accountTag(row.auth_user_id) : null,
 	});
 };

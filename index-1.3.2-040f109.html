@@ -1008,12 +1008,12 @@ body.is-launching-game #version-number {
 	}
 }
 		</style>
-		<link rel="preload" as="fetch" type="application/wasm" crossorigin="anonymous" fetchpriority="high" href="index-1.3.1-4498e6a.wasm">
-		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="high" href="index-1.3.1-4498e6a.pck">
-		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="low" href="index-1.3.1-4498e6a.puzzles.json">
-<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-1.3.1-4498e6a.icon.png" />
-<link rel="apple-touch-icon" href="index-1.3.1-4498e6a.apple-touch-icon.png"/>
-<link rel="manifest" href="index-1.3.1-4498e6a.manifest.json">
+		<link rel="preload" as="fetch" type="application/wasm" crossorigin="anonymous" fetchpriority="high" href="index-1.3.2-040f109.wasm">
+		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="high" href="index-1.3.2-040f109.pck">
+		<link rel="preload" as="fetch" crossorigin="anonymous" fetchpriority="low" href="index-1.3.2-040f109.puzzles.json">
+<link id="-gd-engine-icon" rel="icon" type="image/png" href="index-1.3.2-040f109.icon.png" />
+<link rel="apple-touch-icon" href="index-1.3.2-040f109.apple-touch-icon.png"/>
+<link rel="manifest" href="index-1.3.2-040f109.manifest.json">
 	</head>
 	<body>
 		<div id="orientation-warning">
@@ -1021,7 +1021,7 @@ body.is-launching-game #version-number {
 			<p>Please rotate your device<br>to Portrait Mode</p>
 		</div>
 
-		<div id="version-number">v1.3.1</div>
+		<div id="version-number">v1.3.2</div>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
@@ -1202,7 +1202,7 @@ body.is-launching-game #version-number {
 	}
 })();
 		</script>
-		<script src="index-1.3.1-4498e6a.js"></script>
+		<script src="index-1.3.2-040f109.js"></script>
 		<script>
 function todayIsoDate() {
 	const now = new Date();
@@ -1323,8 +1323,11 @@ function todayIsoDate() {
 		return guestSessionPromise;
 	}
 
+	// Returns the Response so a caller can distinguish a recorded send from a
+	// rejected one (captureReferral needs that to decide whether the URL tag is
+	// safe to strip). Every other caller ignores it and just needs the promise.
 	async function upsertUserStats(payload) {
-		await fetch('/.netlify/functions/stats-event', {
+		return fetch('/.netlify/functions/stats-event', {
 			method: 'POST',
 			credentials: 'include',
 			cache: 'no-store',
@@ -1340,7 +1343,12 @@ function todayIsoDate() {
 	// signed-in flag set by the account code (window.SealsAccount); the server also
 	// no-ops the write for any non-account cookie, so this is defence in depth.
 	const PROGRESS_SYNC_DEBOUNCE_MS = 2500;
-	const MAX_PROGRESS_JSON_BYTES = 24000;
+	// Must stay >= the server's cap in stats-event.js. Board blobs are dominated by
+	// `all_guesses`, which stores one `[color=RRGGBB]X[/color]` span per letter (~22
+	// bytes/letter), so a big solve on a 300+ word puzzle runs past 24KB — at which
+	// point this device silently stopped syncing and the account's board froze at the
+	// last under-cap snapshot. Sized to fit a full clear with room to spare.
+	const MAX_PROGRESS_JSON_BYTES = 131072;
 	let _progressSyncTimer = null;
 	let _pendingProgressState = null;
 
@@ -1352,8 +1360,14 @@ function todayIsoDate() {
 		const puzzleId = resolvePuzzleId(stateObj);
 		if (!puzzleId) return null;
 		// Cheap guard against runaway blobs; the server enforces the real byte cap.
+		// Dropping here means this device stops syncing entirely, so make it visible
+		// rather than failing silently.
 		try {
-			if (JSON.stringify(stateObj).length > MAX_PROGRESS_JSON_BYTES) return null;
+			const size = JSON.stringify(stateObj).length;
+			if (size > MAX_PROGRESS_JSON_BYTES) {
+				console.warn('progress sync skipped: board blob is ' + size + ' bytes (max ' + MAX_PROGRESS_JSON_BYTES + ')');
+				return null;
+			}
 		} catch (_err) {
 			return null;
 		}
@@ -1424,12 +1438,6 @@ function todayIsoDate() {
 		}
 		if (window.sendLoadPerformance && (name === 'gameplay_ready' || name === 'engine_start_resolved')) {
 			window.sendLoadPerformance(name);
-		}
-	};
-
-	window.runAfterMobileStartup = function (work) {
-		if (typeof work === 'function') {
-			work();
 		}
 	};
 
@@ -1606,15 +1614,21 @@ function todayIsoDate() {
 			});
 	}
 
-	window.savePuzzleState = function (stateObj) {
+	// `options.mirror === false` writes the local cache only. The engine passes it for a
+	// board it reconstructed from this account's server-side record (completion known,
+	// board blob missing): re-posting that would report a fabricated 0-guess completion
+	// and publish an empty board as the account's cross-device resume state.
+	window.savePuzzleState = function (stateObj, options) {
 		try {
 			const serialized = JSON.stringify(stateObj);
 			localStorage.setItem(storageKeyForState(stateObj), serialized);
 			if (resolvePuzzleDate(stateObj) === todayIsoDate()) {
 				localStorage.setItem(SAVE_KEY, serialized);
 			}
-			markCompletedAndSendIfNeeded(stateObj);
-			syncPuzzleProgress(stateObj);
+			if (!options || options.mirror !== false) {
+				markCompletedAndSendIfNeeded(stateObj);
+				syncPuzzleProgress(stateObj);
+			}
 			return true;
 		} catch (e) {
 			console.error('Failed to save game state:', e);
@@ -1759,15 +1773,105 @@ function todayIsoDate() {
 		}
 	};
 
+	// --- Affiliate / referral attribution ------------------------------------
+	// Partners (streamers, influencers) get links tagged with a referral code:
+	//   ?ref=CODE                                  (shorthand -> medium "affiliate")
+	//   ?utm_source=CODE&utm_medium=..&utm_campaign=..   (standard UTM)
+	// On a tagged landing we record first-touch attribution against the guest
+	// principal (server keeps the first tag, ignores later ones) so every play,
+	// completion, share and sign-in that follows joins back to the partner. The
+	// tag is then stripped from the URL so a reload or re-share doesn't muddy the
+	// attribution. No puzzle metadata needed, so it can fire straight away.
+	const REF_TOKEN_MAX_LEN = 64;
+	const REF_PARAM_KEYS = ['ref', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
+
+	function sanitizeRefToken(value) {
+		if (typeof value !== 'string') return '';
+		return value.trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, REF_TOKEN_MAX_LEN);
+	}
+
+	function readReferralFromUrl() {
+		let params;
+		try {
+			params = new URLSearchParams(window.location.search || '');
+		} catch (_e) {
+			return null;
+		}
+		const rawRef = params.get('ref');
+		const source = sanitizeRefToken(rawRef || params.get('utm_source') || '');
+		if (!source) return null;
+		// ?ref= shorthand implies an affiliate medium unless utm_medium overrides.
+		const medium = sanitizeRefToken(params.get('utm_medium') || (rawRef ? 'affiliate' : ''));
+		const campaign = sanitizeRefToken(params.get('utm_campaign') || '');
+		return { source: source, medium: medium, campaign: campaign };
+	}
+
+	function stripReferralParams() {
+		try {
+			const url = new URL(window.location.href);
+			let changed = false;
+			REF_PARAM_KEYS.forEach(function (key) {
+				if (url.searchParams.has(key)) {
+					url.searchParams.delete(key);
+					changed = true;
+				}
+			});
+			if (changed && window.history && window.history.replaceState) {
+				const query = url.searchParams.toString();
+				window.history.replaceState(null, '', url.pathname + (query ? '?' + query : '') + url.hash);
+			}
+		} catch (_e) {}
+	}
+
+	window.captureReferral = function () {
+		const ref = readReferralFromUrl();
+		if (!ref) return;
+		const payload = {
+			event_type: 'referral',
+			ref_source: ref.source,
+			ref_medium: ref.medium || null,
+			ref_campaign: ref.campaign || null,
+			landing_path: window.location.pathname,
+			referrer: (document.referrer || '').slice(0, 512)
+		};
+		// Strip only once the send is definitive: 2xx means it is recorded, 400
+		// means the server will never accept this tag. A 401/5xx or a network
+		// failure leaves the tag in the URL so a reload can re-attribute -- dropping
+		// it there would lose the referral with nothing to retry from.
+		const dispatch = function () {
+			ensureGuestSession()
+				.then(function () { return upsertUserStats(payload); })
+				.then(function (response) {
+					if (response && (response.ok || response.status === 400)) stripReferralParams();
+				})
+				.catch(function (err) { console.warn('referral capture failed:', err); });
+		};
+		// Defer through the mobile-startup gate (defined by the main splash
+		// script) so a tiny attribution POST never competes with engine boot.
+		if (typeof window.runAfterMobileStartup === 'function') {
+			window.runAfterMobileStartup(dispatch);
+		} else {
+			dispatch();
+		}
+	};
+
+	// Run once the whole splash script has parsed (so runAfterMobileStartup is
+	// defined). Both inline scripts are synchronous, so DOMContentLoaded is safe.
+	if (document.readyState === 'loading') {
+		window.addEventListener('DOMContentLoaded', function () { window.captureReferral(); });
+	} else {
+		window.captureReferral();
+	}
+
 })();
 		</script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index-1.3.1-4498e6a","experimentalVK":false,"fileSizes":{"index-1.3.1-4498e6a.pck":3667908,"index-1.3.1-4498e6a.wasm":24673935},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-1.3.1-4498e6a.service.worker.js"};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index-1.3.2-040f109","experimentalVK":false,"fileSizes":{"index-1.3.2-040f109.pck":3754192,"index-1.3.2-040f109.wasm":24673935},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index-1.3.2-040f109.service.worker.js"};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 const WHATS_NEW_STORAGE_KEY = '3seals_last_seen_whats_new_version';
-const WHATS_NEW_URL = 'index-1.3.1-4498e6a.whats-new.json';
-const PUZZLES_MANIFEST_URL = 'index-1.3.1-4498e6a.puzzles.json';
+const WHATS_NEW_URL = 'index-1.3.2-040f109.whats-new.json';
+const PUZZLES_MANIFEST_URL = 'index-1.3.2-040f109.puzzles.json';
 const GOOGLE_TAG_ID = 'G-XCPBX6R16Q';
 	const FIRST_PLAY_MODAL_OPEN_DELAY_MS = 45;
 	const FIRST_PLAY_MODAL_CLOSE_MS = 220;
@@ -1802,7 +1906,7 @@ const GOOGLE_TAG_ID = 'G-XCPBX6R16Q';
 	let initializing = true;
 	let statusMode = '';
 	let gameReady = false;
-	let currentVersion = '1.3.1';
+	let currentVersion = '1.3.2';
 	window._appVersion = currentVersion;
 	let whatsNewData = null;
 	let launchStarted = false;
@@ -1863,6 +1967,15 @@ const GOOGLE_TAG_ID = 'G-XCPBX6R16Q';
 		run();
 	}
 
+	// Sole definition. It has to live in this script block because it closes over
+	// `leanMobileStartup` and `gameReady`, which are only known here -- so it is
+	// installed on `window` after the telemetry block above has already captured
+	// references to it. That is safe: every caller up there is inside a function
+	// body (sendLoadPerformance / sendActivityEvent), and nothing invokes them
+	// during parse, so this assignment always lands first. Do not re-add a
+	// "run immediately" stub earlier in the page to paper over the ordering --
+	// one existed until it was removed, and it silently shadowed this deferral
+	// on any path that ran before this block.
 	function runAfterMobileStartup(work) {
 		if (!leanMobileStartup || gameReady) {
 			work();

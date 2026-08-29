@@ -5,9 +5,9 @@ function json(statusCode, body) {
 		statusCode,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
-			"Cache-Control": "no-store"
+			"Cache-Control": "no-store",
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
 	};
 }
 
@@ -58,7 +58,7 @@ exports.handler = async (event) => {
 			startDate,
 			endDate,
 			rollup,
-			limit
+			limit,
 		});
 		const result = { ok: true, rollup, rows: data.rows || data };
 		if (data.guess_distribution) {

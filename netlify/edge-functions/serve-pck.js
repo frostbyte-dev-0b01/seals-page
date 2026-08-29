@@ -13,7 +13,12 @@ export default async function handler(request) {
 	// Keep the static/original path for requests that need normal file semantics
 	// and for Firefox, which has shown startup regressions with the compressed
 	// edge-served bundle in production.
-	if (method !== "GET" || rangeHeader || userAgent.includes("firefox") || userAgent.includes("fxios")) {
+	if (
+		method !== "GET" ||
+		rangeHeader ||
+		userAgent.includes("firefox") ||
+		userAgent.includes("fxios")
+	) {
 		return;
 	}
 

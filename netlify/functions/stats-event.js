@@ -1,24 +1,45 @@
 const { readGuestCookie } = require("./_lib/cookie");
 const {
+	recordReferral,
 	upsertActivityTimestamp,
 	upsertLoadPerfEvent,
 	upsertPuzzleProgress,
-	upsertUserPuzzleStats
+	upsertUserPuzzleStats,
 } = require("./_lib/db");
 
 const ACTIVITY_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
 const MAX_LOAD_PERF_JSON_BYTES = 24000;
-const MAX_PROGRESS_JSON_BYTES = 24000;
+// Board blobs are dominated by `all_guesses` (~22 bytes per letter of BBCode colour
+// markup), so a full clear on a 300+ word puzzle runs past 24KB. Keep in sync with
+// MAX_PROGRESS_JSON_BYTES in splash_template.html.
+const MAX_PROGRESS_JSON_BYTES = 131072;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Referral / affiliate tag charset. Keep tags to a compact, URL-safe set so a
+// junk or hostile query string can't inject arbitrary text into reporting.
+const REF_TOKEN_RE = /[^A-Za-z0-9._-]/g;
+const MAX_REF_TOKEN_LEN = 64;
+const MAX_REF_TEXT_LEN = 512;
+
+function sanitizeRefToken(value) {
+	if (typeof value !== "string") return "";
+	return value.trim().replace(REF_TOKEN_RE, "").slice(0, MAX_REF_TOKEN_LEN);
+}
+
+function sanitizeRefText(value) {
+	if (typeof value !== "string") return null;
+	const trimmed = value.trim().slice(0, MAX_REF_TEXT_LEN);
+	return trimmed === "" ? null : trimmed;
+}
 
 function json(statusCode, body) {
 	return {
 		statusCode,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
-			"Cache-Control": "no-store"
+			"Cache-Control": "no-store",
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
 	};
 }
 
@@ -81,14 +102,29 @@ function validateProgressPayload(payload) {
 	if (typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date)) {
 		return "Invalid puzzle_date (expected YYYY-MM-DD)";
 	}
-	if (!payload.progress || typeof payload.progress !== "object" || Array.isArray(payload.progress)) {
+	if (
+		!payload.progress ||
+		typeof payload.progress !== "object" ||
+		Array.isArray(payload.progress)
+	) {
 		return "Invalid progress";
 	}
-	if (payload.word_count != null && (!Number.isInteger(payload.word_count) || payload.word_count < 0)) {
+	if (
+		payload.word_count != null &&
+		(!Number.isInteger(payload.word_count) || payload.word_count < 0)
+	) {
 		return "Invalid word_count";
 	}
 	if (byteLength(payload.progress) > MAX_PROGRESS_JSON_BYTES) {
 		return "Progress payload too large";
+	}
+	return null;
+}
+
+function validateReferralPayload(payload) {
+	if (!payload || typeof payload !== "object") return "Invalid JSON payload";
+	if (sanitizeRefToken(payload.ref_source) === "") {
+		return "Invalid ref_source";
 	}
 	return null;
 }
@@ -98,22 +134,34 @@ function validateLoadPerfPayload(payload) {
 	if (typeof payload.session_load_id !== "string" || !UUID_RE.test(payload.session_load_id)) {
 		return "Invalid session_load_id (expected UUID)";
 	}
-	if (payload.puzzle_date != null && (typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date))) {
+	if (
+		payload.puzzle_date != null &&
+		(typeof payload.puzzle_date !== "string" || !isIsoDateString(payload.puzzle_date))
+	) {
 		return "Invalid puzzle_date (expected YYYY-MM-DD)";
 	}
 	if (byteLength(payload) > MAX_LOAD_PERF_JSON_BYTES) {
 		return "Load performance payload too large";
 	}
-	if (payload.marks != null && (typeof payload.marks !== "object" || Array.isArray(payload.marks))) {
+	if (
+		payload.marks != null &&
+		(typeof payload.marks !== "object" || Array.isArray(payload.marks))
+	) {
 		return "Invalid marks";
 	}
-	if (payload.durations != null && (typeof payload.durations !== "object" || Array.isArray(payload.durations))) {
+	if (
+		payload.durations != null &&
+		(typeof payload.durations !== "object" || Array.isArray(payload.durations))
+	) {
 		return "Invalid durations";
 	}
 	if (payload.assets != null && !Array.isArray(payload.assets)) {
 		return "Invalid assets";
 	}
-	if (payload.service_worker != null && (typeof payload.service_worker !== "object" || Array.isArray(payload.service_worker))) {
+	if (
+		payload.service_worker != null &&
+		(typeof payload.service_worker !== "object" || Array.isArray(payload.service_worker))
+	) {
 		return "Invalid service_worker";
 	}
 	return null;
@@ -147,9 +195,31 @@ exports.handler = async (event) => {
 		!ACTIVITY_EVENT_TYPES.includes(eventType) &&
 		eventType !== "completion" &&
 		eventType !== "load_perf" &&
-		eventType !== "progress"
+		eventType !== "progress" &&
+		eventType !== "referral"
 	) {
 		return json(400, { ok: false, error: "Unknown event_type" });
+	}
+
+	if (eventType === "referral") {
+		const validationError = validateReferralPayload(payload);
+		if (validationError) {
+			return json(400, { ok: false, error: validationError });
+		}
+		try {
+			await recordReferral({
+				guest_id: guestId,
+				ref_source: sanitizeRefToken(payload.ref_source),
+				ref_medium: sanitizeRefToken(payload.ref_medium) || null,
+				ref_campaign: sanitizeRefToken(payload.ref_campaign) || null,
+				landing_path: sanitizeRefText(payload.landing_path),
+				referrer: sanitizeRefText(payload.referrer),
+			});
+		} catch (err) {
+			console.error("Failed recording referral", err);
+			return json(500, { ok: false, error: "Failed to persist referral" });
+		}
+		return json(200, { ok: true });
 	}
 
 	if (eventType === "load_perf") {
@@ -165,11 +235,12 @@ exports.handler = async (event) => {
 				puzzle_date: payload.puzzle_date || null,
 				app_version: typeof payload.app_version === "string" ? payload.app_version.trim() : null,
 				page_path: typeof payload.page_path === "string" ? payload.page_path.slice(0, 512) : null,
-				user_agent: typeof payload.user_agent === "string" ? payload.user_agent.slice(0, 512) : null,
+				user_agent:
+					typeof payload.user_agent === "string" ? payload.user_agent.slice(0, 512) : null,
 				marks: payload.marks || {},
 				durations: payload.durations || {},
 				assets: payload.assets || [],
-				service_worker: payload.service_worker || {}
+				service_worker: payload.service_worker || {},
 			});
 		} catch (err) {
 			console.error("Failed upserting load performance event", err);
@@ -191,7 +262,7 @@ exports.handler = async (event) => {
 				puzzle_id: payload.puzzle_id.trim(),
 				puzzle_date: payload.puzzle_date,
 				progress: payload.progress,
-				word_count: Number.isInteger(payload.word_count) ? payload.word_count : 0
+				word_count: Number.isInteger(payload.word_count) ? payload.word_count : 0,
 			});
 		} catch (err) {
 			console.error("Failed upserting puzzle progress", err);
@@ -210,7 +281,7 @@ exports.handler = async (event) => {
 				guest_id: guestId,
 				puzzle_id: payload.puzzle_id.trim(),
 				puzzle_date: payload.puzzle_date,
-				event_type: eventType
+				event_type: eventType,
 			});
 		} catch (err) {
 			console.error("Failed upserting activity timestamp", err);
@@ -232,7 +303,7 @@ exports.handler = async (event) => {
 			guesses_on_win: payload.guesses_on_win,
 			total_words_found: payload.total_words_found,
 			completed_at: new Date().toISOString(),
-			streak_eligible: payload.streak_eligible !== false
+			streak_eligible: payload.streak_eligible !== false,
 		});
 	} catch (err) {
 		console.error("Failed upserting user stats", err);
@@ -241,3 +312,10 @@ exports.handler = async (event) => {
 
 	return json(200, { ok: true });
 };
+
+// Exported for tests. The splash (`game/Assets/splash_template.html`) carries a
+// second copy of this sanitizer so a hostile tag never leaves the browser, and
+// nothing but a test can notice if the two charsets/caps drift apart -- see the
+// parity check in tests/splash-referral.test.js.
+exports.sanitizeRefToken = sanitizeRefToken;
+exports.MAX_REF_TOKEN_LEN = MAX_REF_TOKEN_LEN;

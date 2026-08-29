@@ -1,8 +1,5 @@
 const crypto = require("node:crypto");
-const {
-	buildGuestSetCookie,
-	readGuestCookie
-} = require("./_lib/cookie");
+const { buildGuestSetCookie, readGuestCookie } = require("./_lib/cookie");
 const { touchGuestPrincipal } = require("./_lib/db");
 
 function json(statusCode, body, headers = {}) {
@@ -10,9 +7,9 @@ function json(statusCode, body, headers = {}) {
 		statusCode,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
-			...headers
+			...headers,
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
 	};
 }
 
@@ -41,17 +38,17 @@ exports.handler = async (event) => {
 
 	const setCookie = buildGuestSetCookie(guestId, {
 		secure: true,
-		secret
+		secret,
 	});
 
 	return json(
 		200,
 		{
-			ok: true
+			ok: true,
 		},
 		{
 			"Set-Cookie": setCookie,
-			"Cache-Control": "no-store"
-		}
+			"Cache-Control": "no-store",
+		},
 	);
 };

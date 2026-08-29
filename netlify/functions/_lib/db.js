@@ -17,7 +17,7 @@ function getPool() {
 	}
 	pool = new Pool({
 		connectionString,
-		ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false }
+		ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false },
 	});
 	return pool;
 }
@@ -101,7 +101,7 @@ async function upsertUserPuzzleStats(statsRecord) {
 		statsRecord.guesses_on_win,
 		statsRecord.total_words_found,
 		statsRecord.completed_at,
-		statsRecord.streak_eligible === true
+		statsRecord.streak_eligible === true,
 	];
 
 	const { rows } = await getPool().query(sql, params);
@@ -162,18 +162,169 @@ async function upsertPuzzleProgress({ guest_id, puzzle_id, puzzle_date, progress
 		puzzle_id,
 		puzzle_date,
 		JSON.stringify(progress || {}),
-		Number.isInteger(word_count) && word_count >= 0 ? word_count : 0
+		Number.isInteger(word_count) && word_count >= 0 ? word_count : 0,
 	];
 
 	const { rows } = await getPool().query(sql, params);
 	return rows[0] || null;
 }
 
+// Affiliate / referral attribution. Records first-touch attribution against the
+// guest principal (COALESCE keeps the first partner that drove the device, so a
+// later ?ref= landing never rewrites the original) and appends a raw hit to
+// referral_hits for volume / last-touch reporting. Creates the guest principal
+// if this is the very first request from the device, exactly like the other
+// upserts here. Never touches account/completion columns.
+async function recordReferral({
+	guest_id,
+	ref_source,
+	ref_medium = null,
+	ref_campaign = null,
+	landing_path = null,
+	referrer = null,
+}) {
+	const sql = `
+		WITH principal AS (
+			INSERT INTO principals (
+				principal_type,
+				guest_cookie_id,
+				ref_source,
+				ref_medium,
+				ref_campaign,
+				ref_landing_path,
+				ref_first_at,
+				last_seen_at
+			)
+			VALUES (
+				'guest',
+				$1::uuid,
+				$2::text,
+				NULLIF($3::text, ''),
+				NULLIF($4::text, ''),
+				NULLIF($5::text, ''),
+				NOW(),
+				NOW()
+			)
+			ON CONFLICT (guest_cookie_id)
+			DO UPDATE SET
+				last_seen_at = NOW(),
+				ref_source = COALESCE(principals.ref_source, EXCLUDED.ref_source),
+				ref_medium = COALESCE(principals.ref_medium, EXCLUDED.ref_medium),
+				ref_campaign = COALESCE(principals.ref_campaign, EXCLUDED.ref_campaign),
+				ref_landing_path = COALESCE(principals.ref_landing_path, EXCLUDED.ref_landing_path),
+				ref_first_at = COALESCE(principals.ref_first_at, EXCLUDED.ref_first_at)
+			RETURNING id
+		)
+		INSERT INTO referral_hits (
+			principal_id,
+			ref_source,
+			ref_medium,
+			ref_campaign,
+			landing_path,
+			referrer
+		)
+		SELECT
+			id,
+			$2::text,
+			NULLIF($3::text, ''),
+			NULLIF($4::text, ''),
+			NULLIF($5::text, ''),
+			NULLIF($6::text, '')
+		FROM principal
+		RETURNING id;
+	`;
+
+	const params = [
+		guest_id,
+		ref_source,
+		ref_medium || "",
+		ref_campaign || "",
+		landing_path || "",
+		referrer || "",
+	];
+
+	const { rows } = await getPool().query(sql, params);
+	return rows[0] || null;
+}
+
+// Per-affiliate funnel for the referral-summary reporting endpoint. Groups the
+// first-touch attribution on principals by source (+ campaign) and layers on the
+// downstream funnel (plays / completions / sign-ups) plus the raw landing count
+// from referral_hits. Optional filters: a single source and a first-touch date
+// window (inclusive of both ends).
+async function getReferralSummary({
+	refSource = null,
+	startDate = null,
+	endDate = null,
+	limit = 100,
+}) {
+	const sql = `
+		WITH hits AS (
+			SELECT ref_source, ref_campaign, COUNT(*)::integer AS hits
+			FROM referral_hits
+			WHERE ($1::text IS NULL OR ref_source = $1::text)
+			  AND ($2::date IS NULL OR created_at >= $2::date)
+			  AND ($3::date IS NULL OR created_at < ($3::date + 1))
+			GROUP BY ref_source, ref_campaign
+		),
+		funnel AS (
+			SELECT
+				p.ref_source,
+				p.ref_campaign,
+				COUNT(DISTINCT p.id)::integer AS visitors,
+				COUNT(DISTINCT p.id) FILTER (WHERE p.auth_user_id IS NOT NULL)::integer AS signups,
+				COUNT(DISTINCT ups.principal_id)
+					FILTER (WHERE ups.first_play_at IS NOT NULL)::integer AS players,
+				COUNT(DISTINCT ups.principal_id)
+					FILTER (WHERE ups.completed_at IS NOT NULL)::integer AS players_completed,
+				COUNT(*) FILTER (WHERE ups.completed_at IS NOT NULL)::integer AS completions
+			FROM principals p
+			LEFT JOIN user_puzzle_stats ups ON ups.principal_id = p.id
+			WHERE p.ref_source IS NOT NULL
+			  AND ($1::text IS NULL OR p.ref_source = $1::text)
+			  AND ($2::date IS NULL OR p.ref_first_at >= $2::date)
+			  AND ($3::date IS NULL OR p.ref_first_at < ($3::date + 1))
+			GROUP BY p.ref_source, p.ref_campaign
+		)
+		SELECT
+			COALESCE(f.ref_source, h.ref_source) AS ref_source,
+			COALESCE(f.ref_campaign, h.ref_campaign) AS ref_campaign,
+			COALESCE(h.hits, 0)::integer AS hits,
+			COALESCE(f.visitors, 0)::integer AS visitors,
+			COALESCE(f.players, 0)::integer AS players,
+			COALESCE(f.players_completed, 0)::integer AS players_completed,
+			COALESCE(f.completions, 0)::integer AS completions,
+			COALESCE(f.signups, 0)::integer AS signups
+		FROM funnel f
+		-- The join keys must be hash/merge-joinable: Postgres rejects a FULL JOIN on
+		-- IS NOT DISTINCT FROM outright ("FULL JOIN is only supported with
+		-- merge-joinable or hash-joinable join conditions"), which made this query
+		-- fail on every call. Plain = is safe on ref_source (NOT NULL in
+		-- referral_hits, and funnel filters ref_source IS NOT NULL); only
+		-- ref_campaign is nullable, so COALESCE it to a sentinel to match NULLs.
+		-- That sentinel is a real value, not an impossible one, so the IS NULL
+		-- pair below keeps a literal '' campaign from colliding with a NULL one
+		-- and fanning the join out into duplicate rows. The write path NULLIFs
+		-- '' away (see recordReferral) but no constraint enforces that, and a
+		-- manual backfill into these analytics tables would not go through it.
+		-- Each side references a single relation, so this stays hash-joinable.
+		FULL OUTER JOIN hits h
+			ON f.ref_source = h.ref_source
+		   AND COALESCE(f.ref_campaign, '') = COALESCE(h.ref_campaign, '')
+		   AND (f.ref_campaign IS NULL) = (h.ref_campaign IS NULL)
+		ORDER BY visitors DESC, hits DESC, ref_source ASC
+		LIMIT $4::integer;
+	`;
+
+	const { rows } = await getPool().query(sql, [refSource, startDate, endDate, limit]);
+	return { rows };
+}
+
 const VALID_EVENT_TYPES = ["first_seen", "first_play", "first_share"];
 const EVENT_TYPE_COLUMN = {
 	first_seen: "first_seen_at",
 	first_play: "first_play_at",
-	first_share: "first_share_at"
+	first_share: "first_share_at",
 };
 
 async function upsertActivityTimestamp({ guest_id, puzzle_id, puzzle_date, event_type }) {
@@ -229,7 +380,7 @@ async function upsertLoadPerfEvent({
 	marks = {},
 	durations = {},
 	assets = [],
-	service_worker = {}
+	service_worker = {},
 }) {
 	// Beacons can fire 1–3 times per pageload (engine ready / gameplay ready /
 	// pagehide). The upsert merges incoming jsonb so a later partial beacon
@@ -298,7 +449,7 @@ async function upsertLoadPerfEvent({
 		JSON.stringify(marks),
 		JSON.stringify(durations),
 		JSON.stringify(assets),
-		JSON.stringify(service_worker)
+		JSON.stringify(service_worker),
 	]);
 	return rows[0] || null;
 }
@@ -309,7 +460,7 @@ async function getUserPuzzleStatsSummary({
 	startDate = null,
 	endDate = null,
 	rollup = false,
-	limit = 50
+	limit = 50,
 }) {
 	const whereSql = `
 		WHERE completed_at IS NOT NULL
@@ -406,18 +557,18 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 			`INSERT INTO principals (principal_type, guest_cookie_id, last_seen_at)
 			 VALUES ('guest', $1::uuid, NOW())
 			 ON CONFLICT (guest_cookie_id) DO UPDATE SET last_seen_at = NOW()`,
-			[guestId]
+			[guestId],
 		);
 		const { rows: currentRows } = await client.query(
 			`SELECT id, auth_user_id FROM principals WHERE guest_cookie_id = $1::uuid`,
-			[guestId]
+			[guestId],
 		);
 		const currentId = currentRows[0].id;
 		const currentAuthUserId = currentRows[0].auth_user_id;
 
 		const { rows: accountRows } = await client.query(
 			`SELECT id, guest_cookie_id FROM principals WHERE auth_user_id = $1`,
-			[authUserId]
+			[authUserId],
 		);
 
 		// CLAIM: no existing account for this identity.
@@ -432,7 +583,7 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 				await client.query(
 					`INSERT INTO principals (principal_type, auth_user_id, email, guest_cookie_id, last_seen_at)
 					 VALUES ('user', $1, $2, $3::uuid, NOW())`,
-					[authUserId, email, newGuestId]
+					[authUserId, email, newGuestId],
 				);
 				await client.query("COMMIT");
 				return { guestCookieId: newGuestId, merged: false };
@@ -441,7 +592,7 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 				`UPDATE principals
 				    SET principal_type = 'user', auth_user_id = $2, email = $3, last_seen_at = NOW()
 				  WHERE id = $1`,
-				[currentId, authUserId, email]
+				[currentId, authUserId, email],
 			);
 			await client.query("COMMIT");
 			return { guestCookieId: guestId, merged: false };
@@ -454,7 +605,7 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 			if (email) {
 				await client.query(`UPDATE principals SET email = $2, last_seen_at = NOW() WHERE id = $1`, [
 					account.id,
-					email
+					email,
 				]);
 			}
 			await client.query("COMMIT");
@@ -470,7 +621,7 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 			        SELECT 1 FROM user_puzzle_stats a
 			         WHERE a.principal_id = $2 AND a.puzzle_id = g.puzzle_id
 			    )`,
-			[currentId, account.id]
+			[currentId, account.id],
 		);
 
 		// For conflicting puzzles, keep the earliest completion (first-completion-
@@ -520,8 +671,40 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 			        updated_at = NOW()
 			   FROM user_puzzle_stats g
 			  WHERE a.principal_id = $2 AND g.principal_id = $1 AND a.puzzle_id = g.puzzle_id`,
-			[currentId, account.id]
+			[currentId, account.id],
 		);
+
+		// Carry affiliate attribution across the merge. Both the first-touch ref_*
+		// columns and the referral_hits log hang off the guest principal, and
+		// referral_hits cascades on principal delete -- so without this, signing into
+		// an existing account on a referred device silently erases the partner that
+		// drove the visit AND retroactively drops that device's landings from the
+		// raw hit count. First touch still wins: the earlier ref_first_at of the two
+		// principals is kept, and all five columns move as a unit so the surviving
+		// row is never a mix of two campaigns.
+		await client.query(
+			`WITH winner AS (
+				 SELECT ref_source, ref_medium, ref_campaign, ref_landing_path, ref_first_at
+				   FROM principals
+				  WHERE id IN ($1, $2)
+				    AND ref_source IS NOT NULL
+				  ORDER BY ref_first_at ASC NULLS LAST
+				  LIMIT 1
+			 )
+			 UPDATE principals a
+			    SET ref_source = w.ref_source,
+			        ref_medium = w.ref_medium,
+			        ref_campaign = w.ref_campaign,
+			        ref_landing_path = w.ref_landing_path,
+			        ref_first_at = w.ref_first_at
+			   FROM winner w
+			  WHERE a.id = $2`,
+			[currentId, account.id],
+		);
+		await client.query(`UPDATE referral_hits SET principal_id = $2 WHERE principal_id = $1`, [
+			currentId,
+			account.id,
+		]);
 
 		// Drop the now-merged guest rows and the guest principal itself.
 		await client.query(`DELETE FROM user_puzzle_stats WHERE principal_id = $1`, [currentId]);
@@ -530,7 +713,7 @@ async function linkGoogleAccount({ guestId, authUserId, email }) {
 		if (email) {
 			await client.query(`UPDATE principals SET email = $2, last_seen_at = NOW() WHERE id = $1`, [
 				account.id,
-				email
+				email,
 			]);
 		}
 
@@ -563,7 +746,7 @@ function accountTag(authUserId) {
 async function getAccountForGuest(guestId) {
 	const { rows } = await getPool().query(
 		`SELECT principal_type, auth_user_id, email FROM principals WHERE guest_cookie_id = $1::uuid`,
-		[guestId]
+		[guestId],
 	);
 	return rows[0] || null;
 }
@@ -571,7 +754,8 @@ async function getAccountForGuest(guestId) {
 async function getUserGuessAveragesForGuest({
 	guestId,
 	windowDays = 30,
-	seriesDays = 30
+	seriesDays = 30,
+	progressPuzzleId = null,
 }) {
 	const overallSql = `
 		SELECT
@@ -627,10 +811,15 @@ async function getUserGuessAveragesForGuest({
 			COALESCE(ups.streak_eligible, false) AS streak_eligible,
 			-- The resume blob is the canonical board for the active puzzle, including
 			-- completed ones (so switching accounts and back reconstructs a finished
-			-- board). Bound the payload: in-progress rows always carry the blob, and
-			-- completed rows only while recently active (older archive rows fall back to
-			-- the completed flag alone, which the client treats as canonical).
+			-- board). Bound the payload: the client only ever restores the board for the
+			-- puzzle it currently has open, so when it names one ($2) ship that blob
+			-- alone — otherwise an active player pulls dozens of full boards on every
+			-- win screen. Unscoped callers keep the legacy rule: in-progress rows always
+			-- carry the blob, completed rows only while recently active (older archive
+			-- rows fall back to the completed flag alone, which the client treats as
+			-- canonical).
 			CASE
+				WHEN $2::text IS NOT NULL AND ups.puzzle_id <> $2::text THEN NULL
 				WHEN ups.completed_at IS NULL THEN ups.progress
 				WHEN ups.progress_updated_at >= (NOW() - INTERVAL '45 days') THEN ups.progress
 				ELSE NULL
@@ -664,7 +853,7 @@ async function getUserGuessAveragesForGuest({
 		db.query(overallSql, [guestId]),
 		db.query(windowSql, [guestId, windowDays]),
 		db.query(seriesSql, [guestId, seriesDays]),
-		db.query(puzzleProgressSql, [guestId])
+		db.query(puzzleProgressSql, [guestId, progressPuzzleId]),
 	]);
 
 	let guess_distribution = {};
@@ -681,30 +870,32 @@ async function getUserGuessAveragesForGuest({
 		overall: overallRes.rows[0] || {
 			games_completed: 0,
 			avg_guesses_all_time: null,
-			avg_words_all_time: null
+			avg_words_all_time: null,
 		},
 		window: windowRes.rows[0] || {
 			games_completed_window: 0,
 			avg_guesses_window: null,
-			avg_words_window: null
+			avg_words_window: null,
 		},
 		series: seriesRes.rows,
 		puzzle_progress: puzzleProgressRes.rows,
-		guess_distribution
+		guess_distribution,
 	};
 }
 
 module.exports = {
 	accountTag,
 	getAccountForGuest,
+	getReferralSummary,
 	getUserGuessAveragesForGuest,
 	getUserPuzzleStatsSummary,
 	linkGoogleAccount,
+	recordReferral,
 	touchGuestPrincipal,
 	upsertActivityTimestamp,
 	upsertLoadPerfEvent,
 	upsertPuzzleProgress,
 	upsertUserPuzzleStats,
 	setPoolForTests,
-	resetPoolForTests
+	resetPoolForTests,
 };
